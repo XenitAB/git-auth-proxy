@@ -40,23 +40,40 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Staring git proxy for host: %v on port %v\n", config.Domain, *port)
+	log.Printf("Starting git proxy for host: %v on port %v\n", config.Domain, *port)
 	remote, err := url.Parse("https://" + config.Domain)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(remote)
-	http.HandleFunc("/", handler(proxy, config))
+	http.HandleFunc("/readyz", readinessHandler())
+	http.HandleFunc("/healthz", livenessHandler())
+	http.HandleFunc("/", proxyHandler(proxy, config))
 	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func handler(p *httputil.ReverseProxy, c *Configuration) func(http.ResponseWriter, *http.Request) {
+func readinessHandler() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.BasicAuth())
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("{\"status\": \"ok\"}"))
+	}
+}
+
+func livenessHandler() func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("{\"status\": \"ok\"}"))
+	}
+}
+
+func proxyHandler(p *httputil.ReverseProxy, c *Configuration) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// If basic auth is missing return error to force client to retry
 		username, _, ok := r.BasicAuth()
 		if !ok {
