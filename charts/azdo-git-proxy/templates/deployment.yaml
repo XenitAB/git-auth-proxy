@@ -32,7 +32,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - "--config"
-            - "/config.json"
+            - "/var/config.json"
             - "--port"
             - "8080"
           ports:
@@ -51,7 +51,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: config
-              mountPath: "/"
+              mountPath: "/var/"
               readOnly: true
       volumes:
         - name: config

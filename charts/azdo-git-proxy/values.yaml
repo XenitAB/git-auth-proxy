@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: quay.io/xenitab/azdo-git-proxy
   pullPolicy: IfNotPresent
-  tag: "0.1.0"
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
