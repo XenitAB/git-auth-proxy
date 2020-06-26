@@ -1,6 +1,6 @@
 {
   "domain": "dev.azure.com",
-  "pat": "",
+  "pat": "foobar",
   "organization": "xenitab",
   "repositories": [
     {

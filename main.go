@@ -7,10 +7,10 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strconv"
-	"strings"
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/xenitab/azdo-git-proxy/pkg/auth"
 	"github.com/xenitab/azdo-git-proxy/pkg/config"
 )
 
@@ -67,7 +67,8 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 			return
 		}
 
-		if !isPermitted(c, r.URL.Path, username) {
+		err := auth.IsPermitted(c, r.URL.Path, username)
+		if err != nil {
 			log.Printf("Received unauthorized request: %v\n", r.URL.Path)
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
@@ -80,28 +81,4 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 		r.Header.Add("Authorization", "Basic "+patB64)
 		p.ServeHTTP(w, r)
 	}
-}
-
-// isPermitted checks if a specific user is permitted to access a path
-func isPermitted(c *config.Configuration, p string, t string) bool {
-	comp := strings.Split(p, "/")
-	org := comp[1]
-	proj := comp[2]
-	repo := comp[4]
-
-	if comp[3] != "_git" {
-		return false
-	}
-
-	if c.Organization != org {
-		return false
-	}
-
-	for _, repository := range c.Repositories {
-		if repository.Project == proj && repository.Name == repo && repository.Token == t {
-			return true
-		}
-	}
-
-	return false
 }
