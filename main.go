@@ -2,30 +2,17 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
 	flag "github.com/spf13/pflag"
+
+	"github.com/xenitab/azdo-git-proxy/pkg/config"
 )
-
-type Repository struct {
-	Project string `json:"project"`
-	Name    string `json:"name"`
-	Token   string `json:"token"`
-}
-
-type Configuration struct {
-	Domain       string       `json:"domain"`
-	Pat          string       `json:"pat"`
-	Organization string       `json:"organization"`
-	Repositories []Repository `json:"repositories"`
-}
 
 func main() {
 	port := flag.Int("port", 8080, "Port to bind server to.")
@@ -33,15 +20,15 @@ func main() {
 	flag.Parse()
 
 	log.Printf("Reading configuration file at path: %v\n", *configPath)
-	config, err := getConfiguration(*configPath)
+	config, err := config.LoadConfigurationFromPath(*configPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed loading configuration: %v\n", err)
 	}
 
 	log.Printf("Starting git proxy for host: %v on port %v\n", config.Domain, *port)
 	remote, err := url.Parse("https://" + config.Domain)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Invalid remote url: %v\n", err)
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(remote)
@@ -50,7 +37,7 @@ func main() {
 	http.HandleFunc("/", proxyHandler(proxy, config))
 	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not start http server: %v\n", err)
 	}
 }
 
@@ -70,7 +57,7 @@ func livenessHandler() func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func proxyHandler(p *httputil.ReverseProxy, c *Configuration) func(http.ResponseWriter, *http.Request) {
+func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If basic auth is missing return error to force client to retry
 		username, _, ok := r.BasicAuth()
@@ -95,22 +82,8 @@ func proxyHandler(p *httputil.ReverseProxy, c *Configuration) func(http.Response
 	}
 }
 
-// getConfiguration reads json from the given path and parses it.
-func getConfiguration(path string) (*Configuration, error) {
-	file, _ := os.Open(path)
-	defer file.Close()
-	decoder := json.NewDecoder(file)
-	configuration := Configuration{}
-	err := decoder.Decode(&configuration)
-	if err != nil {
-		return nil, err
-	}
-
-	return &configuration, nil
-}
-
 // isPermitted checks if a specific user is permitted to access a path
-func isPermitted(c *Configuration, p string, t string) bool {
+func isPermitted(c *config.Configuration, p string, t string) bool {
 	comp := strings.Split(p, "/")
 	org := comp[1]
 	proj := comp[2]
