@@ -4,6 +4,6 @@ description: A Helm chart for azdo-git-proxy
 
 type: application
 
-version: 0.1.0
+version: v0.1.0-rc3
 
-appVersion: 0.1.0
+appVersion: v0.1.0-rc3
