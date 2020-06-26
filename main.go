@@ -15,18 +15,16 @@ import (
 )
 
 type Repository struct {
-	Token string `json:"token"`
-}
-
-type Project struct {
-	Repositories map[string]Repository `json:"repositories"`
+	Project string `json:"project"`
+	Name    string `json:"name"`
+	Token   string `json:"token"`
 }
 
 type Configuration struct {
-	Domain       string                       `json:"domain"`
-	Pat          string                       `json:"pat"`
-	Organization string                       `json:"organization"`
-	Repositories map[string]map[string]string `json:"repositories"`
+	Domain       string       `json:"domain"`
+	Pat          string       `json:"pat"`
+	Organization string       `json:"organization"`
+	Repositories []Repository `json:"repositories"`
 }
 
 func main() {
@@ -83,12 +81,12 @@ func proxyHandler(p *httputil.ReverseProxy, c *Configuration) func(http.Response
 		}
 
 		if !isPermitted(c, r.URL.Path, username) {
-			log.Printf("Received unauthorized request: %v\n", username)
+			log.Printf("Received unauthorized request: %v\n", r.URL.Path)
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
 		}
 
-		//log.Printf("Succesfully authenticated: user: %v, path: %v", check.Username, check.Path)
+		log.Printf("Succesfully authenticated at path: %v\n", r.URL.Path)
 		r.Host = c.Domain
 		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + c.Pat))
 		r.Header.Del("Authorization")
@@ -116,7 +114,7 @@ func isPermitted(c *Configuration, p string, t string) bool {
 	comp := strings.Split(p, "/")
 	org := comp[1]
 	proj := comp[2]
-	rep := comp[4]
+	repo := comp[4]
 
 	if comp[3] != "_git" {
 		return false
@@ -126,9 +124,11 @@ func isPermitted(c *Configuration, p string, t string) bool {
 		return false
 	}
 
-	if c.Repositories[proj][rep] != t {
-		return false
+	for _, repository := range c.Repositories {
+		if repository.Project == proj && repository.Name == repo && repository.Token == t {
+			return true
+		}
 	}
 
-	return true
+	return false
 }

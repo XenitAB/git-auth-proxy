@@ -2,9 +2,11 @@
   "domain": "dev.azure.com",
   "pat": "",
   "organization": "xenitab",
-  "repositories": {
-    "Lab": {
-      "gitops-deployment": "foobar"
+  "repositories": [
+    {
+      "name": "gitops-deployment",
+      "project": "Lab",
+      "token": "foobar"
     }
-  }
+  ]
 }
