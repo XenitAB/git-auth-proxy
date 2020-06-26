@@ -69,7 +69,7 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 
 		err := auth.IsPermitted(c, r.URL.Path, username)
 		if err != nil {
-			log.Printf("Received unauthorized request: %v\n", r.URL.Path)
+			log.Printf("Received unauthorized request: %v\n", err)
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
 		}
