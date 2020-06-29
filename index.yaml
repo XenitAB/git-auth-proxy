@@ -2,8 +2,18 @@ apiVersion: v1
 entries:
   azdo-git-proxy:
   - apiVersion: v2
+    appVersion: v0.1.0
+    created: "2020-06-29T08:15:59.626981187Z"
+    description: A Helm chart for azdo-git-proxy
+    digest: bea5cdb16e46700e2684d07191fe737fb1f8858cf1d9cc195fdf5a923076155e
+    name: azdo-git-proxy
+    type: application
+    urls:
+    - https://XenitAB.github.io/azdo-git-proxy/azdo-git-proxy-v0.1.0.tgz
+    version: v0.1.0
+  - apiVersion: v2
     appVersion: v0.1.0-rc5
-    created: "2020-06-26T13:35:12.167382352Z"
+    created: "2020-06-29T08:15:59.626596878Z"
     description: A Helm chart for azdo-git-proxy
     digest: 5f6185245748e6e9b7d9608d44e8d661580d8a5950d04c5738864c9fef313331
     name: azdo-git-proxy
@@ -13,7 +23,7 @@ entries:
     version: v0.1.0-rc5
   - apiVersion: v2
     appVersion: v0.1.0-rc4
-    created: "2020-06-26T13:35:12.167044352Z"
+    created: "2020-06-29T08:15:59.626216069Z"
     description: A Helm chart for azdo-git-proxy
     digest: 7a114858867f89f541bac64e5cbf20e09d7d573c42cef179d8c1ac5b80eb9a5c
     name: azdo-git-proxy
@@ -23,7 +33,7 @@ entries:
     version: v0.1.0-rc4
   - apiVersion: v2
     appVersion: v0.1.0-rc3
-    created: "2020-06-26T13:35:12.166672252Z"
+    created: "2020-06-29T08:15:59.625797059Z"
     description: A Helm chart for azdo-git-proxy
     digest: 092047dcd666e041537da391b9bb4b8ba62417122513840539a88caeb745fa0a
     name: azdo-git-proxy
@@ -31,4 +41,4 @@ entries:
     urls:
     - https://XenitAB.github.io/azdo-git-proxy/azdo-git-proxy-v0.1.0-rc3.tgz
     version: v0.1.0-rc3
-generated: "2020-06-26T13:35:12.166142452Z"
+generated: "2020-06-29T08:15:59.624920339Z"
