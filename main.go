@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	// Read configuration
 	port := flag.Int("port", 8080, "Port to bind server to.")
 	configPath := flag.String("config", "/var/config.json", "Path to configuration file.")
 	flag.Parse()
@@ -31,9 +32,10 @@ func main() {
 		log.Fatalf("Invalid remote url: %v\n", err)
 	}
 
+	// Setup and run proxy server
 	proxy := httputil.NewSingleHostReverseProxy(remote)
-	http.HandleFunc("/readyz", readinessHandler())
-	http.HandleFunc("/healthz", livenessHandler())
+	http.HandleFunc("/readyz", readinessHandler)
+	http.HandleFunc("/healthz", livenessHandler)
 	http.HandleFunc("/", proxyHandler(proxy, config))
 	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 	if err != nil {
@@ -41,20 +43,16 @@ func main() {
 	}
 }
 
-func readinessHandler() func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("{\"status\": \"ok\"}"))
-	}
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("{\"status\": \"ok\"}"))
 }
 
-func livenessHandler() func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("{\"status\": \"ok\"}"))
-	}
+func livenessHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("{\"status\": \"ok\"}"))
 }
 
 func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.ResponseWriter, *http.Request) {
@@ -67,6 +65,7 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 			return
 		}
 
+		// Check basic auth with local auth configuration
 		err := auth.IsPermitted(c, r.URL.Path, username)
 		if err != nil {
 			log.Printf("Received unauthorized request: %v\n", err)
@@ -74,6 +73,7 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 			return
 		}
 
+		// Forward request to destination server
 		log.Printf("Succesfully authenticated at path: %v\n", r.URL.Path)
 		r.Host = c.Domain
 		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + c.Pat))
