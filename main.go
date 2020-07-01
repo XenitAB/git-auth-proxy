@@ -1,13 +1,19 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 
+	"github.com/gorilla/mux"
 	flag "github.com/spf13/pflag"
 
 	"github.com/xenitab/azdo-git-proxy/pkg/auth"
@@ -34,13 +40,39 @@ func main() {
 
 	// Setup and run proxy server
 	proxy := httputil.NewSingleHostReverseProxy(remote)
-	http.HandleFunc("/readyz", readinessHandler)
-	http.HandleFunc("/healthz", livenessHandler)
-	http.HandleFunc("/", proxyHandler(proxy, config))
-	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
-	if err != nil {
-		log.Fatalf("Could not start http server: %v\n", err)
+	router := mux.NewRouter()
+	router.HandleFunc("/readyz", readinessHandler).Methods("GET")
+	router.HandleFunc("/healthz", livenessHandler).Methods("GET")
+	router.HandleFunc("/", proxyHandler(proxy, config))
+
+	srv := &http.Server{
+		Addr:    ":" + strconv.Itoa(*port),
+		Handler: router,
 	}
+
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+	log.Print("Server Started")
+
+	<-done
+	log.Print("Server Stopped")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func() {
+		// extra handling here
+		cancel()
+	}()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server Shutdown Failed:%+v", err)
+	}
+	log.Print("Server Exited Properly")
 }
 
 func readinessHandler(w http.ResponseWriter, r *http.Request) {
