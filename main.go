@@ -41,9 +41,9 @@ func main() {
 	// Configure revers proxy and http server
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	router := mux.NewRouter()
+	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, config))
 	router.HandleFunc("/readyz", readinessHandler).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler).Methods("GET")
-	router.HandleFunc("/", proxyHandler(proxy, config))
 
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(*port),
