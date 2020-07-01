@@ -38,7 +38,7 @@ func main() {
 		log.Fatalf("Invalid remote url: %v\n", err)
 	}
 
-	// Setup and run proxy server
+	// Configure revers proxy and http server
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	router := mux.NewRouter()
 	router.HandleFunc("/readyz", readinessHandler).Methods("GET")
@@ -50,9 +50,11 @@ func main() {
 		Handler: router,
 	}
 
+	// Signal handler
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	// Start HTTP server
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
@@ -60,15 +62,15 @@ func main() {
 	}()
 	log.Print("Server Started")
 
+	// Blocks until singal is sent
 	<-done
 	log.Print("Server Stopped")
 
+	// Shutdown http server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer func() {
-		// extra handling here
 		cancel()
 	}()
-
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server Shutdown Failed:%+v", err)
 	}
