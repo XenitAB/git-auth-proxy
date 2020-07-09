@@ -3,7 +3,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/xenitab/azdo-git-proxy/pkg/config"
+	"github.com/xenitab/azdo-proxy/pkg/config"
 )
 
 func baseConf() config.Configuration {

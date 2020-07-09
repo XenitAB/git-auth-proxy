@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: quay.io/xenitab/azdo-git-proxy
+  repository: quay.io/xenitab/azdo-proxy
   pullPolicy: IfNotPresent
   tag: ""
 
@@ -44,4 +44,4 @@ tolerations: []
 
 affinity: {}
 
-configSecretName: "foobar"
+configSecretName: ""

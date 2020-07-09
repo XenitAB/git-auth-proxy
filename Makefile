@@ -1,5 +1,5 @@
 TAG = latest
-IMG ?= xenitab/azdo-git-proxy:$(TAG)
+IMG ?= quay.io/xenitab/azdo-proxy:$(TAG)
 
 fmt:
 	go fmt ./...

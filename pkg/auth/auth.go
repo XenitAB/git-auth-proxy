@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xenitab/azdo-git-proxy/pkg/config"
+	"github.com/xenitab/azdo-proxy/pkg/config"
 )
 
 // IsPermitted checks if a specific user is permitted to access a path
