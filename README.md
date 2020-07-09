@@ -72,7 +72,7 @@ curl http://<token-1>@azdo-proxy/org/proj/_apis/git/repositories/repo-1/pullrequ
 
 > :warning: **If you intend on using a language specific API**: Please read this!
 
-Some APIs built by Microsoft like [azure-devops-go-api](https://github.com/microsoft/azure-devops-go-api) will make a request to the [Resource Areas API](https://docs.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http#how-to-get-an-organizations-url)
+Some APIs built by Microsoft, like [azure-devops-go-api](https://github.com/microsoft/azure-devops-go-api), will make a request to the [Resource Areas API](https://docs.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http#how-to-get-an-organizations-url)
 which returns a list of location URLs for a specific organization. They will then use those URLs
 when making additional requests, skipping the proxy. To avoid this you need to explicitly create
 your client instead of allowing it to be created automatically.
@@ -82,16 +82,16 @@ In the case of Go you should create a client in the following way.
 package main
 
 import (
-	"github.com/microsoft/azure-devops-go-api/azuredevops"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/git"
+  "github.com/microsoft/azure-devops-go-api/azuredevops"
+  "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 )
 
 func main() {
-	connection := azuredevops.NewAnonymousConnection("http://azdo-proxy")
-	client := connection.GetClientByUrl("http://azdo-proxy")
-	gitClient := &git.ClientImpl{
-		Client: *client,
-	}
+  connection := azuredevops.NewAnonymousConnection("http://azdo-proxy")
+  client := connection.GetClientByUrl("http://azdo-proxy")
+  gitClient := &git.ClientImpl{
+    Client: *client,
+  }
 }
 ```
 
@@ -100,15 +100,15 @@ Instead of the cleaner solution which would ignore the proxy.
 package main
 
 import (
-	"context"
+  "context"
 
   "github.com/microsoft/azure-devops-go-api/azuredevops"
-	"github.com/microsoft/azure-devops-go-api/azuredevops/git"
+  "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 )
 
 func main() {
-	connection := azuredevops.NewAnonymousConnection("http://azdo-proxy")
-	ctx := context.Background()
+  connection := azuredevops.NewAnonymousConnection("http://azdo-proxy")
+  ctx := context.Background()
   gitClient, _ := git.NewClient(ctx, connection)
 }
 ```
