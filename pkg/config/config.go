@@ -16,7 +16,7 @@ type Repository struct {
 }
 
 type Configuration struct {
-	Domain       string       `json:"domain" validate:"required"`
+	Domain       string       `json:"domain,omitempty"`
 	Pat          string       `json:"pat" validate:"required"`
 	Organization string       `json:"organization" validate:"required"`
 	Repositories []Repository `json:"repositories" validate:"required"`
@@ -43,6 +43,10 @@ func LoadConfiguration(src io.Reader) (*Configuration, error) {
 	err = json.Unmarshal(b, c)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(c.Domain) == 0 {
+		c.Domain = "dev.azure.com"
 	}
 
 	err = validate.New().Struct(c)
