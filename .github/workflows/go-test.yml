@@ -1,4 +1,4 @@
-name: go-test
+name: Go
 on: [push]
 jobs:
   build:
@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         go: [ "1.14" ]
-    name: Go ${{ matrix.go }} test
+    name: Test
     steps:
       - uses: actions/checkout@v2
       - name: Setup go
