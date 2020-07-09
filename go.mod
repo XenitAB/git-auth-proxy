@@ -1,4 +1,4 @@
-module github.com/xenitab/azdo-git-proxy
+module github.com/xenitab/azdo-proxy
 
 go 1.14
 

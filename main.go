@@ -16,8 +16,8 @@ import (
 	"github.com/gorilla/mux"
 	flag "github.com/spf13/pflag"
 
-	"github.com/xenitab/azdo-git-proxy/pkg/auth"
-	"github.com/xenitab/azdo-git-proxy/pkg/config"
+	"github.com/xenitab/azdo-proxy/pkg/auth"
+	"github.com/xenitab/azdo-proxy/pkg/config"
 )
 
 func main() {
