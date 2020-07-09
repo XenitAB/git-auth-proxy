@@ -1,4 +1,4 @@
-FROM golang:alpine as builder
+FROM golang:1.14.4 as builder
 RUN mkdir /build
 ADD . /build/
 WORKDIR /build
