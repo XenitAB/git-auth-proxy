@@ -110,9 +110,10 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 		// Forward request to destination server
 		log.Printf("Succesfully authenticated at path: %v\n", r.URL.Path)
 		r.Host = c.Domain
-		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + c.Pat))
 		r.Header.Del("Authorization")
+		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + c.Pat))
 		r.Header.Add("Authorization", "Basic "+patB64)
+
 		p.ServeHTTP(w, r)
 	}
 }

@@ -9,6 +9,10 @@ import (
 
 // IsPermitted checks if a specific user is permitted to access a path
 func IsPermitted(c *config.Configuration, p string, t string) error {
+	if p == "/"+c.Organization+"/"+"_apis" {
+		return nil
+	}
+
 	comp := strings.Split(p, "/")
 	if len(comp) < 5 {
 		return fmt.Errorf("Path has to few components: %v", p)
@@ -16,10 +20,15 @@ func IsPermitted(c *config.Configuration, p string, t string) error {
 
 	org := comp[1]
 	proj := comp[2]
-	repo := comp[4]
+	action := comp[3]
 
-	if comp[3] != "_git" {
-		return fmt.Errorf("Missing _git path component: %v", p)
+	var repo string
+	if action == "_git" {
+		repo = comp[4]
+	} else if action == "_apis" {
+		repo = comp[6]
+	} else {
+		return fmt.Errorf("Missing action path component: %v", p)
 	}
 
 	if c.Organization != org {
