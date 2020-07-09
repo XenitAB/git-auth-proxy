@@ -1,5 +1,5 @@
 # Azure DevOps Proxy
-Proxy to allow controlled sharing of a Personal Access Token in Azure DevOps.
+Proxy to allow controlled sharing of a Azure DevOps Personal Access Token.
 
 Azure DevOps allows the use of Personal Access Tokens (PAT) to authenticate access to both its
 API and Git repositories. Sadly it does not provide an API to create new PAT, making the process
