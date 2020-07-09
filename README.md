@@ -1,4 +1,7 @@
 # Azure DevOps Proxy
+[![Go Report Card](https://goreportcard.com/badge/github.com/XenitAB/azdo-proxy)](https://goreportcard.com/report/github.com/XenitAB/azdo-proxy)
+[![Docker Repository on Quay](https://quay.io/repository/xenitab/azdo-proxy/status "Docker Repository on Quay")](https://quay.io/repository/xenitab/azdo-proxy)
+
 Proxy to allow controlled sharing of a Azure DevOps Personal Access Token.
 
 Azure DevOps allows the use of Personal Access Tokens (PAT) to authenticate access to both its
