@@ -1,3 +1,6 @@
+TAG = latest
+IMG ?= xenitab/azdo-git-proxy:$(TAG)
+
 fmt:
 	go fmt ./...
 
@@ -9,3 +12,9 @@ test: fmt vet
 
 run: fmt vet
 	go run main.go
+
+docker-build:
+	docker build -t ${IMG} .
+
+kind-load:
+	kind load docker-image $(IMG)
