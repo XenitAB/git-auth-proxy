@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"log"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -13,35 +13,50 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/gorilla/mux"
 	flag "github.com/spf13/pflag"
+	"go.uber.org/zap"
 
 	"github.com/xenitab/azdo-proxy/pkg/auth"
 	"github.com/xenitab/azdo-proxy/pkg/config"
 )
 
 func main() {
+	// Initiate logs
+	var log logr.Logger
+	zapLog, err := zap.NewProduction()
+	if err != nil {
+		panic(fmt.Sprintf("who watches the watchmen (%v)?", err))
+	}
+	log = zapr.NewLogger(zapLog)
+	setupLog := log.WithName("setup")
+
 	// Read configuration
 	port := flag.Int("port", 8080, "Port to bind server to.")
 	configPath := flag.String("config", "/var/config.json", "Path to configuration file.")
 	flag.Parse()
 
-	log.Printf("Reading configuration file at path: %v\n", *configPath)
+	setupLog.Info("Reading configuration file", "path", *configPath)
 	config, err := config.LoadConfigurationFromPath(*configPath)
 	if err != nil {
-		log.Fatalf("Failed loading configuration: %v\n", err)
+		setupLog.Error(err, "Failed loading configuration")
+		os.Exit(1)
 	}
 
-	log.Printf("Starting git proxy for host: %v on port %v\n", config.Domain, *port)
+	setupLog.Info("Starting git proxy", "domain", config.Domain, "port", *port)
 	remote, err := url.Parse("https://" + config.Domain)
 	if err != nil {
-		log.Fatalf("Invalid remote url: %v\n", err)
+		setupLog.Error(err, "Invalid domain")
+		os.Exit(1)
 	}
 
 	// Generate authorization object
 	auth, err := auth.GenerateAuthorization(*config)
 	if err != nil {
-		log.Fatalf("Could not generate Authorization: %v", err)
+		setupLog.Error(err, "Could not generate Authorization")
+		os.Exit(1)
 	}
 
 	// Configure revers proxy and http server
@@ -49,7 +64,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/readyz", readinessHandler).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, auth, config.Domain, config.Pat))
+	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, log.WithName("reverse-proxy"), auth, config.Domain, config.Pat))
 
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(*port),
@@ -63,14 +78,14 @@ func main() {
 	// Start HTTP server
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			setupLog.Error(err, "Http Server Error")
 		}
 	}()
-	log.Print("Server Started")
+	setupLog.Info("Server started")
 
 	// Blocks until singal is sent
 	<-done
-	log.Print("Server Stopped")
+	setupLog.Info("Server stopped")
 
 	// Shutdown http server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -78,9 +93,11 @@ func main() {
 		cancel()
 	}()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server Shutdown Failed:%+v", err)
+		setupLog.Error(err, "Server shutdown failed")
+		os.Exit(1)
 	}
-	log.Print("Server Exited Properly")
+
+	setupLog.Info("Server exited properly")
 }
 
 func readinessHandler(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +112,7 @@ func livenessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("{\"status\": \"ok\"}"))
 }
 
-func proxyHandler(p *httputil.ReverseProxy, a *auth.Authorization, domain string, pat string) func(http.ResponseWriter, *http.Request) {
+func proxyHandler(p *httputil.ReverseProxy, log logr.Logger, a *auth.Authorization, domain string, pat string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If basic auth is missing return error to force client to retry
 		username, _, ok := r.BasicAuth()
@@ -108,13 +125,13 @@ func proxyHandler(p *httputil.ReverseProxy, a *auth.Authorization, domain string
 		// Check basic auth with local auth configuration
 		err := auth.IsPermitted(a, r.URL.Path, username)
 		if err != nil {
-			log.Printf("Received unauthorized request: %v\n", err)
+			log.Error(err, "Received unauthorized request")
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
 		}
 
 		// Forward request to destination server
-		log.Printf("Succesfully authenticated at path: %v\n", r.URL.Path)
+		log.Info("Authenticated request", "path", r.URL.Path)
 		r.Host = domain
 		r.Header.Del("Authorization")
 		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + pat))
