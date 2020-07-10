@@ -56,8 +56,6 @@ func IsPermitted(a *Authorization, p string, t string) error {
 		// Return of a regex matches the path
 		for _, r := range e.Regexes {
 			if r.MatchString(p) {
-				fmt.Println(p)
-				fmt.Printf("Path %v matches %v regex\n", p, r.String())
 				return nil
 			}
 		}
