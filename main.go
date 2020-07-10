@@ -38,12 +38,18 @@ func main() {
 		log.Fatalf("Invalid remote url: %v\n", err)
 	}
 
+	// Generate authorization object
+	auth, err := auth.GenerateAuthorization(*config)
+	if err != nil {
+		log.Fatalf("Could not generate Authorization: %v", err)
+	}
+
 	// Configure revers proxy and http server
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	router := mux.NewRouter()
 	router.HandleFunc("/readyz", readinessHandler).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, config))
+	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, auth, config.Domain, config.Pat))
 
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(*port),
@@ -89,7 +95,7 @@ func livenessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("{\"status\": \"ok\"}"))
 }
 
-func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.ResponseWriter, *http.Request) {
+func proxyHandler(p *httputil.ReverseProxy, a *auth.Authorization, domain string, pat string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If basic auth is missing return error to force client to retry
 		username, _, ok := r.BasicAuth()
@@ -100,7 +106,7 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 		}
 
 		// Check basic auth with local auth configuration
-		err := auth.IsPermitted(c, r.URL.Path, username)
+		err := auth.IsPermitted(a, r.URL.Path, username)
 		if err != nil {
 			log.Printf("Received unauthorized request: %v\n", err)
 			http.Error(w, "User not permitted", http.StatusForbidden)
@@ -109,9 +115,9 @@ func proxyHandler(p *httputil.ReverseProxy, c *config.Configuration) func(http.R
 
 		// Forward request to destination server
 		log.Printf("Succesfully authenticated at path: %v\n", r.URL.Path)
-		r.Host = c.Domain
+		r.Host = domain
 		r.Header.Del("Authorization")
-		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + c.Pat))
+		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + pat))
 		r.Header.Add("Authorization", "Basic "+patB64)
 
 		p.ServeHTTP(w, r)
