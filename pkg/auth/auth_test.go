@@ -109,3 +109,25 @@ func TestInvalidToken(t *testing.T) {
 		t.Error("Token should not be permitted")
 	}
 }
+
+func TestBaseApi(t *testing.T) {
+	auth := auth()
+	token := "foobar"
+	path := "/org/_apis"
+
+	err := IsPermitted(auth, path, token)
+	if err != nil {
+		t.Errorf("Token should be permitted: %v", err)
+	}
+}
+
+func TestApiPath(t *testing.T) {
+	auth := auth()
+	token := "token"
+	path := "/org/proj/_apis/git/repositories/repo/commits"
+
+	err := IsPermitted(auth, path, token)
+	if err != nil {
+		t.Errorf("Token should be permitted: %v", err)
+	}
+}
