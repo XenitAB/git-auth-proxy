@@ -62,8 +62,8 @@ func main() {
 	// Configure revers proxy and http server
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	router := mux.NewRouter()
-	router.HandleFunc("/readyz", readinessHandler).Methods("GET")
-	router.HandleFunc("/healthz", livenessHandler).Methods("GET")
+	router.HandleFunc("/readyz", readinessHandler(log.WithName("readiness"))).Methods("GET")
+	router.HandleFunc("/healthz", livenessHandler(log.WithName("liveness"))).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, log.WithName("reverse-proxy"), auth, config.Domain, config.Pat))
 
 	srv := &http.Server{
@@ -100,16 +100,24 @@ func main() {
 	setupLog.Info("Server exited properly")
 }
 
-func readinessHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("{\"status\": \"ok\"}"))
+func readinessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte("{\"status\": \"ok\"}")); err != nil {
+			log.Error(err, "Could not write response data")
+		}
+	}
 }
 
-func livenessHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("{\"status\": \"ok\"}"))
+func livenessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte("{\"status\": \"ok\"}")); err != nil {
+			log.Error(err, "Could not write response data")
+		}
+	}
 }
 
 func proxyHandler(p *httputil.ReverseProxy, log logr.Logger, a *auth.Authorization, domain string, pat string) func(http.ResponseWriter, *http.Request) {

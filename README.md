@@ -12,7 +12,7 @@ of automation cumbersome if multiple tokens are needed with limited scopes.
   <img src="./assets/architecture.png">
 </p>
 
-Azure Devops Proxy (azdo-proxy) is an attempt to solve this issue by enabling a single PAT
+Azure DevOps Proxy (azdo-proxy) is an attempt to solve this issue by enabling a single PAT
 to be shared by many applications, while at the same time limiting access for each application.
 Requests are sent to azdo-proxy together with a token, which gives access to a specific repository.
 The request is checked and if allowed forwarded to Azure DevOps with the PAT appended to the request.
@@ -57,10 +57,9 @@ There should now be a azdo-proxy Pod and Service in the cluster, ready to proxy 
 
 ### GIT
 Cloning a repository through the proxy is not too different from doing so directly from Azure DevOps.
-The only limitation is that it is not possible to clone through ssh, as azdo-proxy only proxies http traffic.
-To clone the repository `repo-1` [get the clone url from the respository page](https://docs.microsoft.com/en-us/azure/devops/repos/git/clone?view=azure-devops&tabs=visual-studio#get-the-clone-url-to-your-repo).
-Then replace the host part of the url with `azdo-proxy` and att the token as a basci auth parameter.
-The result should be similar to below.
+The only limitation is that it is not possible to clone through ssh, as azdo-proxy only proxies HTTP traffic.
+To clone the repository `repo-1` [get the clone URL from the repository page](https://docs.microsoft.com/en-us/azure/devops/repos/git/clone?view=azure-devops&tabs=visual-studio#get-the-clone-url-to-your-repo).
+Then replace the host part of the URL with `azdo-proxy` and add the token as a basic auth parameter. The result should be similar to below.
 ```shell
 git clone http://<token-1>@azdo-proxy/org/proj/_git/repo-1
 ```
