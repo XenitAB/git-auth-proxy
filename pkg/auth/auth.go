@@ -46,20 +46,20 @@ func GenerateAuthorization(c config.Configuration) (*Authorization, error) {
 }
 
 // IsPermitted checks if a specific user is permitted to access a path
-func IsPermitted(a *Authorization, p string, t string) error {
+func IsPermitted(a *Authorization, path string, token string) error {
 	for _, e := range a.Endpoints {
 		// Only check regex for matching tokens
-		if e.Token != t {
+		if e.Token != token {
 			continue
 		}
 
 		// Return of a regex matches the path
 		for _, r := range e.Regexes {
-			if r.MatchString(p) {
+			if r.MatchString(path) {
 				return nil
 			}
 		}
 	}
 
-	return fmt.Errorf("Could not find any matching configured repositories: %v", p)
+	return fmt.Errorf("Could not find matching repository in configuration: %v", path)
 }

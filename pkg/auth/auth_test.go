@@ -22,6 +22,11 @@ func auth() *Authorization {
 				Name:    "foobar",
 				Token:   "foobar",
 			},
+			{
+				Project: "proj%20space",
+				Name:    "repo%20space",
+				Token:   "whitespace",
+			},
 		},
 	}
 
@@ -107,6 +112,17 @@ func TestInvalidToken(t *testing.T) {
 	err := IsPermitted(auth, path, token)
 	if err == nil {
 		t.Error("Token should not be permitted")
+	}
+}
+
+func TestWhitespace(t *testing.T) {
+	auth := auth()
+	token := "whitespace"
+	path := "/org/proj%20space/_git/repo%20space"
+
+	err := IsPermitted(auth, path, token)
+	if err != nil {
+		t.Errorf("Token should be permitted: %v", err)
 	}
 }
 
