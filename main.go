@@ -123,7 +123,7 @@ func proxyHandler(p *httputil.ReverseProxy, log logr.Logger, a *auth.Authorizati
 		}
 
 		// Check basic auth with local auth configuration
-		err := auth.IsPermitted(a, r.URL.Path, username)
+		err := auth.IsPermitted(a, r.URL.EscapedPath(), username)
 		if err != nil {
 			log.Error(err, "Received unauthorized request")
 			http.Error(w, "User not permitted", http.StatusForbidden)
