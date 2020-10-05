@@ -16,7 +16,7 @@ type Endpoint struct {
 	Regexes []*regexp.Regexp
 }
 
-// GeneGenerateAuthorization creates regex resources to validate tokens and endpoints
+// GenerateAuthorization creates regex resources to validate tokens and endpoints
 func GenerateAuthorization(c config.Configuration) (*Authorization, error) {
 	baseApi, err := regexp.Compile(`/` + c.Organization + `/_apis\b`)
 	if err != nil {
