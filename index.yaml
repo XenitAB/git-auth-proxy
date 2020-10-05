@@ -2,8 +2,18 @@ apiVersion: v1
 entries:
   azdo-proxy:
   - apiVersion: v2
+    appVersion: v0.3.0
+    created: "2020-10-05T18:24:44.909780582Z"
+    description: A Helm chart for azdo-proxy
+    digest: 858d220bb18d9f5755bf3aaddc5407f2b6fd4c92067e2d2e0970292558939563
+    name: azdo-proxy
+    type: application
+    urls:
+    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.0.tgz
+    version: v0.3.0
+  - apiVersion: v2
     appVersion: v0.2.1
-    created: "2020-08-24T09:43:24.223673674Z"
+    created: "2020-10-05T18:24:44.90945578Z"
     description: A Helm chart for azdo-proxy
     digest: aa06ee0a2440b8be9161541dc22e782476a6c3ffd91554cbcd81c095feac620e
     name: azdo-proxy
@@ -13,7 +23,7 @@ entries:
     version: v0.2.1
   - apiVersion: v2
     appVersion: v0.2.0
-    created: "2020-08-24T09:43:24.223323174Z"
+    created: "2020-10-05T18:24:44.909095277Z"
     description: A Helm chart for azdo-proxy
     digest: f7c9e990eb62520be1747e2930d6e59b9227fef187a69d56e6e1ede1c323d548
     name: azdo-proxy
@@ -23,7 +33,7 @@ entries:
     version: v0.2.0
   - apiVersion: v2
     appVersion: v0.2.0-rc2
-    created: "2020-08-24T09:43:24.223033574Z"
+    created: "2020-10-05T18:24:44.908771175Z"
     description: A Helm chart for azdo-proxy
     digest: 8589809d03233e76c19e883ac3b70c24ff3955fc1717a9fcd40d85e9a6b47f79
     name: azdo-proxy
@@ -33,7 +43,7 @@ entries:
     version: v0.2.0-rc2
   - apiVersion: v2
     appVersion: v0.2.0-rc1
-    created: "2020-08-24T09:43:24.222538874Z"
+    created: "2020-10-05T18:24:44.908416273Z"
     description: A Helm chart for azdo-proxy
     digest: e1c7849b7a92c320ab70bfcf3ea2a9bbd38946bfc2314de86d5275f80261d5f7
     name: azdo-proxy
@@ -41,4 +51,4 @@ entries:
     urls:
     - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.2.0-rc1.tgz
     version: v0.2.0-rc1
-generated: "2020-08-24T09:43:24.221586974Z"
+generated: "2020-10-05T18:24:44.907697468Z"
