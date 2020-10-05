@@ -75,7 +75,7 @@ func main() {
 	}
 
 	// Run PAT validation every minute
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for {
 			select {
