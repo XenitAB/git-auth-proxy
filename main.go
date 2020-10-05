@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -23,6 +24,17 @@ import (
 	"github.com/xenitab/azdo-proxy/pkg/config"
 )
 
+var (
+	port       int
+	configPath string
+)
+
+func init() {
+	flag.IntVar(&port, "port", 8080, "port to bind server to.")
+	flag.StringVar(&configPath, "config", "/var/config.json", "path to configuration file.")
+	flag.Parse()
+}
+
 func main() {
 	// Initiate logs
 	var log logr.Logger
@@ -34,46 +46,61 @@ func main() {
 	setupLog := log.WithName("setup")
 
 	// Read configuration
-	port := flag.Int("port", 8080, "Port to bind server to.")
-	configPath := flag.String("config", "/var/config.json", "Path to configuration file.")
-	flag.Parse()
-
-	setupLog.Info("Reading configuration file", "path", *configPath)
-	config, err := config.LoadConfigurationFromPath(*configPath)
+	setupLog.Info("Reading configuration file", "path", configPath)
+	config, err := config.LoadConfigurationFromPath(configPath)
 	if err != nil {
 		setupLog.Error(err, "Failed loading configuration")
 		os.Exit(1)
 	}
-
-	setupLog.Info("Starting git proxy", "domain", config.Domain, "port", *port)
 	remote, err := url.Parse("https://" + config.Domain)
 	if err != nil {
-		setupLog.Error(err, "Invalid domain")
+		setupLog.Error(err, "Invalid Azure DevOps domain")
 		os.Exit(1)
 	}
-
-	// Generate authorization object
 	auth, err := auth.GenerateAuthorization(*config)
 	if err != nil {
-		setupLog.Error(err, "Could not generate Authorization")
+		setupLog.Error(err, "Could not generate authorization")
 		os.Exit(1)
-	}
-
-	// Configure revers proxy and http server
-	proxy := httputil.NewSingleHostReverseProxy(remote)
-	router := mux.NewRouter()
-	router.HandleFunc("/readyz", readinessHandler(log.WithName("readiness"))).Methods("GET")
-	router.HandleFunc("/healthz", livenessHandler(log.WithName("liveness"))).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, log.WithName("reverse-proxy"), auth, config.Domain, config.Pat))
-
-	srv := &http.Server{
-		Addr:    ":" + strconv.Itoa(*port),
-		Handler: router,
 	}
 
 	// Signal handler
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// Validate PAT with Azure DevOps
+	err = validatePat(config.Pat, config.Organization)
+	if err != nil {
+		setupLog.Error(err, "PAT is invalid")
+		os.Exit(1)
+	}
+
+	// Run PAT validation every minute
+	ticker := time.NewTicker(1 * time.Minute)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				setupLog.Info("Validating PAT")
+				err = validatePat(config.Pat, config.Organization)
+				if err != nil {
+					setupLog.Error(err, "PAT is invalid")
+					os.Exit(1)
+				}
+			case <-done:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	// Configure revers proxy and http server
+	setupLog.Info("Starting git proxy", "domain", config.Domain, "port", port)
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+	router := mux.NewRouter()
+	router.HandleFunc("/readyz", readinessHandler(log.WithName("readiness"))).Methods("GET")
+	router.HandleFunc("/healthz", livenessHandler(log.WithName("liveness"))).Methods("GET")
+	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, log.WithName("reverse-proxy"), auth, config.Domain, config.Pat))
+	srv := &http.Server{Addr: ":" + strconv.Itoa(port), Handler: router}
 
 	// Start HTTP server
 	go func() {
@@ -147,4 +174,26 @@ func proxyHandler(p *httputil.ReverseProxy, log logr.Logger, a *auth.Authorizati
 
 		p.ServeHTTP(w, r)
 	}
+}
+
+func validatePat(pat string, org string) error {
+	url := fmt.Sprintf("https://dev.azure.com/%v/_apis/connectionData", org)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	patB64 := base64.StdEncoding.EncodeToString([]byte(":" + pat))
+	req.Header.Add("Authorization", "Basic "+patB64)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return errors.New("authorization failed")
+	}
+
+	return nil
 }
