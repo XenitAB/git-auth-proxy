@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/xenitab/azdo-proxy/pkg/config"
 )
