@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/xenitab/azdo-proxy/pkg/config"
 )
@@ -49,7 +50,7 @@ func GenerateAuthorization(c config.Configuration) (*Authorization, error) {
 func IsPermitted(a *Authorization, path string, token string) error {
 	for _, e := range a.Endpoints {
 		// Only check regex for matching tokens
-		if e.Token != token {
+		if !strings.EqualFold(e.Token, token) {
 			continue
 		}
 
