@@ -1,0 +1,18 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "azdo-proxy.fullname" . }}-deny-ingress
+  labels:
+    {{- include "azdo-proxy.labels" . | nindent 4 }}
+spec:
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+    - {}
+  podSelector: {}
+{{- end }}
