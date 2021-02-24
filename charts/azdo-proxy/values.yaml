@@ -45,6 +45,6 @@ tolerations: []
 affinity: {}
 
 networkPolicy:
-  enabled: true
+  enabled: false
 
 config: ""
