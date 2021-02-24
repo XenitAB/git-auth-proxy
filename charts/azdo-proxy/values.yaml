@@ -44,4 +44,4 @@ tolerations: []
 
 affinity: {}
 
-configSecretName: ""
+config: ""
