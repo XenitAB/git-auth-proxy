@@ -44,4 +44,7 @@ tolerations: []
 
 affinity: {}
 
-configSecretName: ""
+networkPolicy:
+  enabled: false
+
+config: ""
