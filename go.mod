@@ -1,6 +1,6 @@
 module github.com/xenitab/azdo-proxy
 
-go 1.14
+go 1.16
 
 require (
 	github.com/go-logr/logr v0.2.0
