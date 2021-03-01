@@ -150,15 +150,20 @@ func livenessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
 func proxyHandler(p *httputil.ReverseProxy, log logr.Logger, a *auth.Authorization, domain string, pat string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If basic auth is missing return error to force client to retry
-		username, _, ok := r.BasicAuth()
+		username, password, ok := r.BasicAuth()
 		if !ok {
 			w.Header().Set("WWW-Authenticate", "Basic realm=\"Restricted\"")
 			http.Error(w, "Missing basic authentication", http.StatusUnauthorized)
 			return
 		}
 
+		t := username
+		if len(password) > 0 {
+			t = password
+		}
+
 		// Check basic auth with local auth configuration
-		err := auth.IsPermitted(a, r.URL.EscapedPath(), username)
+		err := auth.IsPermitted(a, r.URL.EscapedPath(), t)
 		if err != nil {
 			log.Error(err, "Received unauthorized request")
 			http.Error(w, "User not permitted", http.StatusForbidden)
