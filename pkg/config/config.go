@@ -1,58 +1,40 @@
 package config
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"os"
-
-	validate "github.com/go-playground/validator/v10"
+	"fmt"
+	"net/url"
 )
 
-type Repository struct {
-	Project string `json:"project" validate:"required"`
-	Name    string `json:"name" validate:"required"`
-	Token   string `json:"token" validate:"required"`
-}
-
 type Configuration struct {
-	Domain       string       `json:"domain,omitempty"`
+	Organizations []Organization `json:"organizations" validate:"required,dive"`
+}
+
+type Organization struct {
+	Name         string       `json:"name" validate:"required"`
+	Domain       string       `json:"domain,omitempty" validate:"required"`
+	Schema       string       `json:"schema,omitempty" validate:"required"`
 	Pat          string       `json:"pat" validate:"required"`
-	Organization string       `json:"organization" validate:"required"`
-	Repositories []Repository `json:"repositories" validate:"required"`
+	Repositories []Repository `json:"repositories" validate:"required,dive"`
 }
 
-// LoadConfiguration reads json from the given path and parses it.
-func LoadConfigurationFromPath(path string) (*Configuration, error) {
-	f, err := os.Open(path)
+func (o Organization) GetTarget() (*url.URL, error) {
+	u, err := url.Parse(fmt.Sprintf("%s://%s", o.Schema, o.Domain))
 	if err != nil {
 		return nil, err
 	}
-
-	return LoadConfiguration(f)
+	return u, nil
 }
 
-// LoadConfiguration reads json from the given reader and parses it.
-func LoadConfiguration(src io.Reader) (*Configuration, error) {
-	b, err := ioutil.ReadAll(src)
-	if err != nil {
-		return nil, err
+func (o Organization) GetSecretName(r Repository) string {
+	if r.SecretNameOverride != "" {
+		return r.SecretNameOverride
 	}
+	return fmt.Sprintf("%s-%s-%s", o.Name, r.Project, r.Name)
+}
 
-	c := &Configuration{}
-	err = json.Unmarshal(b, c)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(c.Domain) == 0 {
-		c.Domain = "dev.azure.com"
-	}
-
-	err = validate.New().Struct(c)
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
+type Repository struct {
+	Project            string   `json:"project" validate:"required"`
+	Name               string   `json:"name" validate:"required"`
+	Namespaces         []string `json:"namespaces" validate:"required"`
+	SecretNameOverride string   `json:"secretNameOverride,omitempty"`
 }
