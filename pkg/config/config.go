@@ -24,7 +24,7 @@ type Configuration struct {
 
 // LoadConfiguration reads json from the given path and parses it.
 func LoadConfigurationFromPath(path string) (*Configuration, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304
 	if err != nil {
 		return nil, err
 	}
