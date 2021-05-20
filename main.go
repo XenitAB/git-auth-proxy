@@ -17,6 +17,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
 
@@ -97,6 +98,7 @@ func main() {
 	setupLog.Info("Starting git proxy", "domain", config.Domain, "port", port)
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	router := mux.NewRouter()
+	router.Path("/metrics").Handler(promhttp.Handler())
 	router.HandleFunc("/readyz", readinessHandler(log.WithName("readiness"))).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler(log.WithName("liveness"))).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, log.WithName("reverse-proxy"), auth, config.Domain, config.Pat))

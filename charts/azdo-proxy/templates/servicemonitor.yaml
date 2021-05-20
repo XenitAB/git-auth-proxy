@@ -1,0 +1,15 @@
+{{- if .Values.servicemonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    {{- include "azdo-proxy.labels" . | nindent 4 }}
+  name: {{ include "azdo-proxy.fullname" . }}
+spec:
+  endpoints:
+  - path: /metrics
+    port: http
+  selector:
+    matchLabels:
+      {{- include "azdo-proxy.selectorLabels" . | nindent 6 }}
+{{- end }}

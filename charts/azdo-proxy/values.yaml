@@ -44,6 +44,9 @@ tolerations: []
 
 affinity: {}
 
+servicemonitor:
+  enabled: false
+
 networkPolicy:
   enabled: false
 
