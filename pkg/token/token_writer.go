@@ -22,6 +22,13 @@ type TokenWriter struct {
 	authz  auth.Authorization
 }
 
+const (
+	usernameValue = "git"
+	usernameKey   = "username"
+	passwordKey   = "password"
+	tokenKey      = "token"
+)
+
 func NewTokenWriter(logger logr.Logger, client *kubernetes.Clientset, authz auth.Authorization) *TokenWriter {
 	return &TokenWriter{
 		logger: logger,
@@ -87,9 +94,9 @@ func (t *TokenWriter) createSecret(ctx context.Context, name string, namespace s
 			Labels:    labels,
 		},
 		StringData: map[string]string{
-			"username": "git",
-			"password": token,
-			"token":    token,
+			usernameKey: usernameValue,
+			passwordKey: token,
+			tokenKey:    token,
 		},
 	}
 	_, err := t.client.CoreV1().Secrets(namespace).Create(ctx, secretObject, metaV1.CreateOptions{})
@@ -97,3 +104,41 @@ func (t *TokenWriter) createSecret(ctx context.Context, name string, namespace s
 		return fmt.Errorf("Could not create Secret %s in namespace %s: %v", name, namespace, err)
 	}
 	return nil
+}
+
+func (t *TokenWriter) getSecret(ctx context.Context, name, namespace string) (*v1.Secret, error) {
+	secret, err := t.client.CoreV1().Secrets(namespace).Get(ctx, name, metaV1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
+
+// secretDataMatch check if the data in the secret matches the token
+func (t *TokenWriter) secretDataMatch(secret *v1.Secret, token string) bool {
+
+	tokenData, ok := secret.Data[tokenKey]
+	if !ok {
+		return false
+	}
+	if string(tokenData) != token {
+		return false
+	}
+
+	passwordData, ok := secret.Data[passwordKey]
+	if !ok {
+		return false
+	}
+	if string(passwordData) != token {
+		return false
+	}
+
+	usernameData, ok := secret.Data[usernameKey]
+	if !ok {
+		return false
+	}
+	if string(usernameData) != usernameValue {
+		return false
+	}
+	return true
+}

@@ -72,7 +72,8 @@ func main() {
 		setupLog.Error(err, "Invalid kubernetes client")
 		os.Exit(1)
 	}
-	tokenWriter := token.NewTokenWriter(client, authz)
+	tokenWriter := token.NewTokenWriter(logger, client, authz)
+
 	go tokenWriter.Start(ctx.Done())
 
 	setupLog.Info("Starting server")
