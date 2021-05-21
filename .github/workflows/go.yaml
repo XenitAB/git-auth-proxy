@@ -14,8 +14,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.32
-          args: -E misspell
+          version: v1.39
   test:
     runs-on: ubuntu-latest
     steps:

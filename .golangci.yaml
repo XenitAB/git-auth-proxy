@@ -1,0 +1,13 @@
+run:
+  timeout: 4m
+
+linters:
+  disable-all: false
+  enable:
+    - gocyclo
+    - misspell
+    - gosec
+
+linters-settings:
+  gocyclo:
+    min-complexity: 20
