@@ -66,7 +66,7 @@ func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	router.HandleFunc("/readyz", readinessHandler(a.logger)).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler(a.logger)).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(proxyHandler(a.logger, a.proxy, a.authz))
-	srv := &http.Server{Addr: fmt.Sprintf(":%s", a.port), Handler: router}
+	srv := &http.Server{Addr: a.port, Handler: router}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {

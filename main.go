@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -23,13 +22,13 @@ import (
 
 var (
 	kubeconfigPath string
-	port           int
+	port           string
 	configPath     string
 )
 
 func init() {
 	flag.StringVar(&kubeconfigPath, "kubeconfig", "", "absolute path to the kubeconfig file.")
-	flag.IntVar(&port, "port", 8080, "port to bind proxy server to.")
+	flag.StringVar(&port, "port", ":8080", "port to bind proxy server to.")
 	flag.StringVar(&configPath, "config", "/var/config.json", "path to configuration file.")
 	flag.Parse()
 }
@@ -45,7 +44,7 @@ func main() {
 	setupLog := logger.WithName("setup")
 
 	// Load configuration and authorization
-	setupLog.Info("Reading configuration from", "path", configPath)
+	setupLog.Info("Reading configuration", "path", configPath)
 	path, err := filepath.Rel("/", configPath)
 	cfg, err := config.LoadConfiguration(os.DirFS("/"), path)
 	if err != nil {
@@ -73,10 +72,15 @@ func main() {
 		os.Exit(1)
 	}
 	tokenWriter := token.NewTokenWriter(logger, client, authz)
-	go tokenWriter.Start(ctx.Done())
-
+	go func() {
+		err := tokenWriter.Start(ctx.Done())
+		if err != nil {
+			setupLog.Error(err, "Token writer returned error")
+			os.Exit(1)
+		}
+	}()
 	setupLog.Info("Starting server")
-	azdoServer := server.NewAzdoServer(logger, strconv.Itoa(port), authz)
+	azdoServer := server.NewAzdoServer(logger, port, authz)
 	azdoServer.ListenAndServe(ctx.Done())
 
 	setupLog.Info("Azure DevOps Proxy stopped")
