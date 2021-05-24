@@ -73,7 +73,6 @@ func main() {
 		os.Exit(1)
 	}
 	tokenWriter := token.NewTokenWriter(logger, client, authz)
-
 	go tokenWriter.Start(ctx.Done())
 
 	setupLog.Info("Starting server")
