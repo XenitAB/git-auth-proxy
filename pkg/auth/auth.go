@@ -80,6 +80,7 @@ func (a *Authorization) GetEndpoints() map[string]Endpoint {
 }
 
 // LookupEndpoint returns the endpoint with the matching organization, project and repository.
+// TODO (Philip): Include domain in this lookup
 func (a *Authorization) LookupEndpoint(org, proj, repo string) (Endpoint, error) {
 	for _, v := range a.endpoints {
 		if v.Organization == org && v.Project == proj && v.Repository == repo {
