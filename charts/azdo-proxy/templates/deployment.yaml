@@ -19,6 +19,7 @@ spec:
       labels:
         {{- include "azdo-proxy.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "azdo-proxy.fullname" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -35,11 +36,6 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args:
-            - "--config"
-            - "/var/config.json"
-            - "--port"
-            - "8080"
           ports:
             - name: http
               containerPort: 8080

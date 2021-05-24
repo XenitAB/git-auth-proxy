@@ -44,6 +44,7 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/managed-by": "azdo-proxy"}}
 	labelMap, err := metav1.LabelSelectorAsMap(&labelSelector)
 	if err != nil {
+		t.logger.Error(err, "could not create label selector")
 		return err
 	}
 	selectorString := labels.SelectorFromSet(labelMap).String()
@@ -54,11 +55,13 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 	// clean up all secrets managed by azdo-proxy
 	oldSecrets, err := t.client.CoreV1().Secrets("").List(ctx, metav1.ListOptions{LabelSelector: selectorString})
 	if err != nil {
+		t.logger.Error(err, "could not list old secrets")
 		return err
 	}
 	for _, oldSecret := range oldSecrets.Items {
 		err := t.client.CoreV1().Secrets(oldSecret.Namespace).Delete(ctx, oldSecret.Name, metav1.DeleteOptions{})
 		if err != nil {
+			t.logger.Error(err, "could not delete old secret %s/%s", oldSecret.Name, oldSecret.Namespace)
 			return err
 		}
 	}
@@ -69,7 +72,11 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 		labels := createSecretLabels(e.Domain, e.Organization, e.Project, e.Repository)
 		for _, ns := range e.Namespaces {
 			namespaces = append(namespaces, ns)
-			t.createSecret(ctx, e.SecretName, ns, e.Token, labels)
+			err := t.createSecret(ctx, e.SecretName, ns, e.Token, labels)
+			if err != nil {
+				t.logger.Error(err, "could not create initial secret")
+				return err
+			}
 		}
 	}
 
