@@ -47,4 +47,6 @@ affinity: {}
 networkPolicy:
   enabled: false
 
+priorityClassName: ""
+
 config: ""
