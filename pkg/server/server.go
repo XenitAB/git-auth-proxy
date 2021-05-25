@@ -128,6 +128,16 @@ func proxyHandler(logger logr.Logger, p *httputil.ReverseProxy, authz auth.Autho
 			return
 		}
 		pat, err := authz.TargetForToken(token)
+		if err != nil {
+			if err.Error() == "invalid token" {
+				logger.Error(err, "Received invalid token")
+				http.Error(w, "Invalid token", http.StatusBadRequest)
+				return
+			}
+			logger.Error(err, "Received invalid url format")
+			http.Error(w, "Invalid url format", http.StatusBadRequest)
+			return
+		}
 
 		// Forward request to destination server
 		logger.Info("Authenticated request", "path", r.URL.Path)

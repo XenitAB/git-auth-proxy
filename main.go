@@ -48,6 +48,10 @@ func main() {
 	// Load configuration and authorization
 	setupLog.Info("Reading configuration", "path", configPath)
 	path, err := filepath.Rel("/", configPath)
+	if err != nil {
+		setupLog.Error(err, "Could not make relative path to basepath")
+		os.Exit(1)
+	}
 	cfg, err := config.LoadConfiguration(os.DirFS("/"), path)
 	if err != nil {
 		setupLog.Error(err, "Could not get relative path")

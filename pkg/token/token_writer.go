@@ -71,6 +71,7 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 	for _, e := range t.authz.GetEndpoints() {
 		labels := createSecretLabels(e.Domain, e.Organization, e.Project, e.Repository)
 		for _, ns := range e.Namespaces {
+			// TODO namepsaces is never used, remove?
 			namespaces = append(namespaces, ns)
 			err := t.createSecret(ctx, e.SecretName, ns, e.Token, labels)
 			if err != nil {
@@ -128,7 +129,11 @@ func (t *TokenWriter) secretDelete(obj interface{}) {
 		return
 	}
 	labels := createSecretLabels(e.Domain, e.Organization, e.Project, e.Repository)
-	t.createSecret(context.Background(), e.SecretName, secret.Namespace, e.Token, labels)
+	err = t.createSecret(context.Background(), e.SecretName, secret.Namespace, e.Token, labels)
+	if err != nil {
+		t.logger.Error(err, "Unable to created secret after deletion")
+		return
+	}
 }
 
 func (t *TokenWriter) createSecret(ctx context.Context, name string, namespace string, token string, labels map[string]string) error {
