@@ -13,17 +13,23 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	prommetrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	"github.com/slok/go-http-metrics/middleware/std"
+
 	"github.com/xenitab/azdo-proxy/pkg/auth"
 )
 
 type AzdoServer struct {
-	logger logr.Logger
-	port   string
-	proxy  *httputil.ReverseProxy
-	authz  auth.Authorization
+	logger      logr.Logger
+	port        string
+	metricsPort string
+	proxy       *httputil.ReverseProxy
+	authz       auth.Authorization
 }
 
-func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) *AzdoServer {
+func NewAzdoServer(logger logr.Logger, port, metricsPort string, authz auth.Authorization) *AzdoServer {
 	director := func(req *http.Request) {
 		token, err := tokenFromRequest(req)
 		if err != nil {
@@ -52,10 +58,11 @@ func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) *A
 	}
 
 	return &AzdoServer{
-		logger: logger.WithName("azdo-server"),
-		port:   port,
-		proxy:  &httputil.ReverseProxy{Director: director},
-		authz:  authz,
+		logger:      logger.WithName("azdo-server"),
+		port:        port,
+		metricsPort: metricsPort,
+		proxy:       &httputil.ReverseProxy{Director: director},
+		authz:       authz,
 	}
 }
 
@@ -63,14 +70,32 @@ func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) *A
 func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	a.logger.Info("Starting git proxy", "port", a.port)
 	router := mux.NewRouter()
+
+	prometheus_mdlw := middleware.New(middleware.Config{
+		Recorder: prommetrics.NewRecorder(prommetrics.Config{
+			Prefix: "azdo_proxy",
+		}),
+	})
+
+	router.Use(std.HandlerProvider("", prometheus_mdlw))
 	router.HandleFunc("/readyz", readinessHandler(a.logger)).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler(a.logger)).Methods("GET")
 	router.PathPrefix("/").HandlerFunc(proxyHandler(a.logger, a.proxy, a.authz))
 	srv := &http.Server{Addr: a.port, Handler: router}
+	metricsSrv := &http.Server{Addr: a.metricsPort, Handler: promhttp.Handler()}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			a.logger.Error(err, "azdo-proxy server crashed")
+			os.Exit(1)
+		}
+	}()
+
+	// Serve our metrics.
+	go func() {
+		a.logger.Info("Starting metrics server", "port", a.metricsPort)
+		if err := metricsSrv.ListenAndServe(); err != http.ErrServerClosed {
+			a.logger.Error(err, "metrics server crashed")
 			os.Exit(1)
 		}
 	}()
