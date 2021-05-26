@@ -1,6 +1,7 @@
+#! /bin/sh
 set -e
 
-function cleanup {
+cleanup() {
   echo "Cleaning Up"
   kill $PID
 }
@@ -31,12 +32,16 @@ kubectl --namespace azdo-proxy port-forward svc/azdo-proxy 8080:80 &
 PID=$!
 sleep 2
 TOKEN=$(kubectl -n tenant-1 get secret org-proj-repo --template={{.data.token}} | base64 -d -w 0)
-if [ curl -s -o /dev/null -w "%{http_code}" -u username:$TOKEN http://localhost:8080/org/proj/_apis/git/repositories/repo != "200" ]; then
-exit 1
+
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u username:$TOKEN http://localhost:8080/org/proj/_apis/git/repositories/repo)
+if [ $STATUS != "200" ]; then
+  exit 1
 fi
-if [ curl -s -o /dev/null -w "%{http_code}" -u username:$TOKEN http://localhost:8080/org/proj/_apis/git/repositories/repo1 != "403" ]; then
-exit 1
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u username:$TOKEN http://localhost:8080/org/proj/_apis/git/repositories/repo1)
+if [ $STATUS != "403" ]; then
+  exit 1
 fi
+
 
 # All tests are complete
 echo "E2E passed"
