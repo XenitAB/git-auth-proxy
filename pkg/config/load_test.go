@@ -85,7 +85,7 @@ func TestValidJson(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, cfg.Organizations)
 	require.Equal(t, "dev.azure.com", cfg.Organizations[0].Domain)
-	require.Equal(t, "https", cfg.Organizations[0].Schema)
+	require.Equal(t, "https", cfg.Organizations[0].Scheme)
 	require.Equal(t, "xenitab", cfg.Organizations[0].Name)
 	require.Equal(t, "foobar", cfg.Organizations[0].Pat)
 	require.NotEmpty(t, cfg.Organizations[0].Repositories)

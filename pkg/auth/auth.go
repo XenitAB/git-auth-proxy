@@ -20,7 +20,7 @@ type Authorization struct {
 type Endpoint struct {
 	Pat        string
 	Domain     string
-	Schema     string
+	Scheme     string
 	Token      string
 	Namespaces []string
 	SecretName string
@@ -59,7 +59,7 @@ func NewAuthorization(cfg config.Configuration) (Authorization, error) {
 			e := Endpoint{
 				Pat:          o.Pat,
 				Domain:       o.Domain,
-				Schema:       o.Schema,
+				Scheme:       o.Scheme,
 				Token:        token,
 				Namespaces:   r.Namespaces,
 				SecretName:   o.GetSecretName(r),
@@ -105,7 +105,7 @@ func (a *Authorization) TargetForToken(token string) (*url.URL, error) {
 	if !ok {
 		return nil, errors.New("invalid token")
 	}
-	target, err := url.Parse(fmt.Sprintf("%s://%s", e.Schema, e.Domain))
+	target, err := url.Parse(fmt.Sprintf("%s://%s", e.Scheme, e.Domain))
 	if err != nil {
 		return nil, fmt.Errorf("invalid url format: %v", err)
 	}

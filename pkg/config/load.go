@@ -9,7 +9,7 @@ import (
 
 const (
 	defaultDomain = "dev.azure.com"
-	defaultSchema = "https"
+	defaultScheme = "https"
 )
 
 // LoadConfiguration parses and validates the configuration file at a given path.
@@ -37,8 +37,8 @@ func setConfigurationDefaults(cfg Configuration) Configuration {
 		if o.Domain == "" {
 			cfg.Organizations[i].Domain = defaultDomain
 		}
-		if o.Schema == "" {
-			cfg.Organizations[i].Schema = defaultSchema
+		if o.Scheme == "" {
+			cfg.Organizations[i].Scheme = defaultScheme
 		}
 	}
 	return cfg

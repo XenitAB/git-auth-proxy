@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
@@ -71,6 +73,15 @@ func main() {
 	// Start Azure DevOps proxy server
 	ctx := signals.SetupSignalHandler()
 
+	setupLog.Info("Starting metrics server", "port", metricsPort)
+	metricsSrv := &http.Server{Addr: metricsPort, Handler: promhttp.Handler()}
+	go func() {
+		if err := metricsSrv.ListenAndServe(); err != http.ErrServerClosed {
+			setupLog.Error(err, "metrics server crashed")
+			os.Exit(1)
+		}
+	}()
+
 	setupLog.Info("Starting token writer")
 	client, err := getKubernetesClient(kubeconfigPath)
 	if err != nil {
@@ -85,8 +96,13 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
 	setupLog.Info("Starting server")
-	azdoServer := server.NewAzdoServer(logger, port, metricsPort, authz)
+	azdoServer, err := server.NewAzdoServer(logger, port, authz)
+	if err != nil {
+		setupLog.Error(err, "Could not create server")
+		os.Exit(1)
+	}
 	azdoServer.ListenAndServe(ctx.Done())
 
 	setupLog.Info("Azure DevOps Proxy stopped")

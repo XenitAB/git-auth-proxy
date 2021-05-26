@@ -6,6 +6,7 @@ config: |
     "organizations": [
       {
         "domain": "test-nginx",
+        "scheme": "http",
         "name": "org",
         "pat": "foobar",
         "repositories": [

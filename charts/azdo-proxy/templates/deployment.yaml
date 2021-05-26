@@ -6,6 +6,8 @@ metadata:
     {{- include "azdo-proxy.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "azdo-proxy.selectorLabels" . | nindent 6 }}

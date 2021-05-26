@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	prommetrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
@@ -22,48 +21,28 @@ import (
 )
 
 type AzdoServer struct {
-	logger      logr.Logger
-	port        string
-	metricsPort string
-	proxy       *httputil.ReverseProxy
-	authz       auth.Authorization
+	logger  logr.Logger
+	port    string
+	proxies map[string]*httputil.ReverseProxy
+	authz   auth.Authorization
 }
 
-func NewAzdoServer(logger logr.Logger, port, metricsPort string, authz auth.Authorization) *AzdoServer {
-	director := func(req *http.Request) {
-		token, err := tokenFromRequest(req)
+func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) (*AzdoServer, error) {
+	proxies := map[string]*httputil.ReverseProxy{}
+	for k := range authz.GetEndpoints() {
+		target, err := authz.TargetForToken(k)
 		if err != nil {
-			logger.Error(err, "token not present in request")
-			return
+			return nil, fmt.Errorf("could not create http proxy from endpoints: %v", err)
 		}
-		target, err := authz.TargetForToken(token)
-		if err != nil {
-			logger.Error(err, "could not get target for token")
-			return
-		}
-
-		targetQuery := target.RawQuery
-		req.URL.Scheme = target.Scheme
-		req.URL.Host = target.Host
-		req.URL.Path, req.URL.RawPath = joinURLPath(target, req.URL)
-		if targetQuery == "" || req.URL.RawQuery == "" {
-			req.URL.RawQuery = targetQuery + req.URL.RawQuery
-		} else {
-			req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
-		}
-		if _, ok := req.Header["User-Agent"]; !ok {
-			// explicitly disable User-Agent so it's not set to default value
-			req.Header.Set("User-Agent", "")
-		}
+		proxies[target.String()] = httputil.NewSingleHostReverseProxy(target)
 	}
 
 	return &AzdoServer{
-		logger:      logger.WithName("azdo-server"),
-		port:        port,
-		metricsPort: metricsPort,
-		proxy:       &httputil.ReverseProxy{Director: director},
-		authz:       authz,
-	}
+		logger:  logger.WithName("azdo-server"),
+		port:    port,
+		proxies: proxies,
+		authz:   authz,
+	}, nil
 }
 
 // ListenAndServe starts the HTTP server on the specified port
@@ -80,22 +59,12 @@ func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	router.Use(std.HandlerProvider("", prometheus_mdlw))
 	router.HandleFunc("/readyz", readinessHandler(a.logger)).Methods("GET")
 	router.HandleFunc("/healthz", livenessHandler(a.logger)).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(a.logger, a.proxy, a.authz))
+	router.PathPrefix("/").HandlerFunc(proxyHandler(a.logger, a.proxies, a.authz))
 	srv := &http.Server{Addr: a.port, Handler: router}
-	metricsSrv := &http.Server{Addr: a.metricsPort, Handler: promhttp.Handler()}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			a.logger.Error(err, "azdo-proxy server crashed")
-			os.Exit(1)
-		}
-	}()
-
-	// Serve our metrics.
-	go func() {
-		a.logger.Info("Starting metrics server", "port", a.metricsPort)
-		if err := metricsSrv.ListenAndServe(); err != http.ErrServerClosed {
-			a.logger.Error(err, "metrics server crashed")
 			os.Exit(1)
 		}
 	}()
@@ -111,8 +80,9 @@ func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	}
 }
 
-func proxyHandler(logger logr.Logger, p *httputil.ReverseProxy, authz auth.Authorization) func(http.ResponseWriter, *http.Request) {
+func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy, authz auth.Authorization) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Get the token from the request
 		token, err := tokenFromRequest(r)
 		if err != nil {
 			w.Header().Set("WWW-Authenticate", "Basic realm=\"Restricted\"")
@@ -127,15 +97,16 @@ func proxyHandler(logger logr.Logger, p *httputil.ReverseProxy, authz auth.Autho
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
 		}
-		pat, err := authz.TargetForToken(token)
+		pat, err := authz.PatForToken(token)
 		if err != nil {
-			if err.Error() == "invalid token" {
-				logger.Error(err, "Received invalid token")
-				http.Error(w, "Invalid token", http.StatusBadRequest)
-				return
-			}
-			logger.Error(err, "Received invalid url format")
-			http.Error(w, "Invalid url format", http.StatusBadRequest)
+			logger.Error(err, "Could not find the PAT for the given token")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		target, err := authz.TargetForToken(token)
+		if err != nil {
+			logger.Error(err, "Target could not be created from the token")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -144,7 +115,15 @@ func proxyHandler(logger logr.Logger, p *httputil.ReverseProxy, authz auth.Autho
 		r.Header.Del("Authorization")
 		patB64 := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("pat:%s", pat)))
 		r.Header.Add("Authorization", "Basic "+patB64)
-		p.ServeHTTP(w, r)
+
+		// Forward the request to the correct proxy
+		proxy, ok := proxies[target.String()]
+		if !ok {
+			logger.Info("missing proxy for target")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		proxy.ServeHTTP(w, r)
 	}
 }
 
