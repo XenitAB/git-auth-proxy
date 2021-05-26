@@ -38,7 +38,12 @@ func TestBasic(t *testing.T) {
 	tokenWriter := NewTokenWriter(logger, client, authz)
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
-	go tokenWriter.Start(ctx.Done())
+	go func() {
+		err := tokenWriter.Start(ctx.Done())
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
 	require.NoError(t, err)

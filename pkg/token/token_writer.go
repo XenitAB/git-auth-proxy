@@ -64,12 +64,9 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 	}
 
 	// initial write of the new secrets
-	namespaces := []string{}
 	for _, e := range t.authz.GetEndpoints() {
 		labels := createSecretLabels(e.Domain, e.Organization, e.Project, e.Repository)
 		for _, ns := range e.Namespaces {
-			// TODO namepsaces is never used, remove?
-			namespaces = append(namespaces, ns)
 			err := t.createSecret(ctx, e.SecretName, ns, e.Token, labels)
 			if err != nil {
 				return fmt.Errorf("could not create initial secrets: %v", err)
@@ -105,7 +102,7 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 
 func (t *TokenWriter) secretUpdate(oldObj, newObj interface{}) {
 	oldSecret := oldObj.(*v1.Secret)
-	t.updateSecret(context.Background(), oldSecret, oldSecret.Namespace)
+	_ = t.updateSecret(context.Background(), oldSecret, oldSecret.Namespace)
 }
 
 func (t *TokenWriter) secretDelete(obj interface{}) {
