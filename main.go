@@ -23,16 +23,16 @@ import (
 )
 
 var (
-	kubeconfigPath string
 	port           string
 	metricsPort    string
+	kubeconfigPath string
 	configPath     string
 )
 
 func init() {
-	flag.StringVar(&kubeconfigPath, "kubeconfig", "", "absolute path to the kubeconfig file.")
 	flag.StringVar(&port, "port", ":8080", "port to bind proxy server to.")
 	flag.StringVar(&metricsPort, "metrics-port", ":9090", "port to bind metrics endpoint to.")
+	flag.StringVar(&kubeconfigPath, "kubeconfig", "", "absolute path to the kubeconfig file.")
 	flag.StringVar(&configPath, "config", "/var/config.json", "path to configuration file.")
 	flag.Parse()
 }

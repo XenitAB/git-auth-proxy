@@ -61,8 +61,8 @@ spec:
               readOnly: true
       volumes:
         - name: config
-          secret:
-            secretName: {{ include "azdo-proxy.fullname" . }}
+          configMap:
+            name: {{ include "azdo-proxy.fullname" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}

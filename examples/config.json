@@ -5,9 +5,8 @@
       "pat": "foobar",
       "repositories": [
         {
-          "name": "gitops-deployment",
-          "project": "Lab",
-          "token": "foobar",
+          "name": "fleet-infra",
+          "project": "lab",
           "namespaces": [
             "foo",
             "bar"
