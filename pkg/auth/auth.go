@@ -91,7 +91,7 @@ func (a *Authorization) LookupEndpoint(org, proj, repo string) (Endpoint, error)
 }
 
 // PatForToken returns the pat associated with the token
-func (a *Authorization) PatForToken(token string) (string, error) {
+func (a *Authorization) GetPatForToken(token string) (string, error) {
 	e, ok := a.endpoints[token]
 	if !ok {
 		return "", errors.New("invalid token")
@@ -100,7 +100,7 @@ func (a *Authorization) PatForToken(token string) (string, error) {
 }
 
 // TargetForToken returns the target url which matches the given token
-func (a *Authorization) TargetForToken(token string) (*url.URL, error) {
+func (a *Authorization) GetTargetForToken(token string) (*url.URL, error) {
 	e, ok := a.endpoints[token]
 	if !ok {
 		return nil, errors.New("invalid token")

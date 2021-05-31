@@ -28,7 +28,7 @@ type AzdoServer struct {
 func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) (*AzdoServer, error) {
 	proxies := map[string]*httputil.ReverseProxy{}
 	for k := range authz.GetEndpoints() {
-		target, err := authz.TargetForToken(k)
+		target, err := authz.GetTargetForToken(k)
 		if err != nil {
 			return nil, fmt.Errorf("could not create http proxy from endpoints: %v", err)
 		}
@@ -95,13 +95,13 @@ func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy,
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
 		}
-		pat, err := authz.PatForToken(token)
+		pat, err := authz.GetPatForToken(token)
 		if err != nil {
 			logger.Error(err, "Could not find the PAT for the given token")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		target, err := authz.TargetForToken(token)
+		target, err := authz.GetTargetForToken(token)
 		if err != nil {
 			logger.Error(err, "Target could not be created from the token")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
