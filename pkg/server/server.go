@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -108,7 +109,7 @@ func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy,
 			return
 		}
 
-		// Forward request to destination server
+		// Overwrite the authorization header with the PAT token
 		logger.Info("Authenticated request", "path", r.URL.Path)
 		r.Header.Del("Authorization")
 		patB64 := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("pat:%s", pat)))
@@ -154,6 +155,10 @@ func tokenFromRequest(r *http.Request) (string, error) {
 	token := username
 	if len(password) > 0 {
 		token = password
+	}
+
+	if token == "" {
+		return "", errors.New("token cannot be empty")
 	}
 
 	return token, nil
