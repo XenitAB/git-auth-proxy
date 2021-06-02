@@ -31,7 +31,7 @@ func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) (*
 	for k := range authz.GetEndpoints() {
 		target, err := authz.GetTargetForToken(k)
 		if err != nil {
-			return nil, fmt.Errorf("could not create http proxy from endpoints: %v", err)
+			return nil, fmt.Errorf("could not create http proxy from endpoints: %w", err)
 		}
 		proxies[target.String()] = httputil.NewSingleHostReverseProxy(target)
 	}
@@ -44,7 +44,7 @@ func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) (*
 	}, nil
 }
 
-// ListenAndServe starts the HTTP server on the specified port
+// ListenAndServe starts the HTTP server on the specified port.
 func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	a.logger.Info("Starting git proxy", "port", a.port)
 	router := mux.NewRouter()
@@ -62,7 +62,7 @@ func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	srv := &http.Server{Addr: a.port, Handler: router}
 
 	go func() {
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
 			a.logger.Error(err, "azdo-proxy server crashed")
 			os.Exit(1)
 		}
@@ -79,6 +79,7 @@ func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
 	}
 }
 
+//nolint:lll // difficult to make this shorter right now (Philip)
 func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy, authz auth.Authorization) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get the token from the request

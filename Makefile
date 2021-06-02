@@ -6,7 +6,7 @@ assets:
 .PHONY: assets
 
 lint:
-	golangci-lint run -E misspell
+	golangci-lint run ./...
 
 fmt:
 	go fmt ./...

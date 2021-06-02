@@ -15,12 +15,12 @@ import (
 )
 
 func TestBasic(t *testing.T) {
-	cfg := config.Configuration{
-		Organizations: []config.Organization{
+	cfg := &config.Configuration{
+		Organizations: []*config.Organization{
 			{
 				Name: "org",
 				Pat:  "test",
-				Repositories: []config.Repository{
+				Repositories: []*config.Repository{
 					{
 						Project:            "proj",
 						Name:               "repo",

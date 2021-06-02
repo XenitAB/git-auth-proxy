@@ -13,26 +13,26 @@ const (
 )
 
 // LoadConfiguration parses and validates the configuration file at a given path.
-func LoadConfiguration(fs iofs.FS, path string) (Configuration, error) {
+func LoadConfiguration(fs iofs.FS, path string) (*Configuration, error) {
 	b, err := iofs.ReadFile(fs, path)
 	if err != nil {
-		return Configuration{}, err
+		return nil, err
 	}
-	cfg := Configuration{}
+	cfg := &Configuration{}
 	err = json.Unmarshal(b, &cfg)
 	if err != nil {
-		return Configuration{}, err
+		return nil, err
 	}
 	cfg = setConfigurationDefaults(cfg)
 	validate := validator.New()
 	err = validate.Struct(cfg)
 	if err != nil {
-		return Configuration{}, err
+		return nil, err
 	}
 	return cfg, nil
 }
 
-func setConfigurationDefaults(cfg Configuration) Configuration {
+func setConfigurationDefaults(cfg *Configuration) *Configuration {
 	for i, o := range cfg.Organizations {
 		if o.Domain == "" {
 			cfg.Organizations[i].Domain = defaultDomain

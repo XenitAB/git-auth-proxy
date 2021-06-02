@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -76,7 +77,7 @@ func main() {
 	setupLog.Info("Starting metrics server", "port", metricsPort)
 	metricsSrv := &http.Server{Addr: metricsPort, Handler: promhttp.Handler()}
 	go func() {
-		if err := metricsSrv.ListenAndServe(); err != http.ErrServerClosed {
+		if err := metricsSrv.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
 			setupLog.Error(err, "metrics server crashed")
 			os.Exit(1)
 		}

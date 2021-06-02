@@ -14,7 +14,7 @@ import (
 const tokenLenght = 64
 
 type Authorization struct {
-	endpoints map[string]Endpoint
+	endpoints map[string]*Endpoint
 }
 
 type Endpoint struct {
@@ -34,12 +34,12 @@ type Endpoint struct {
 }
 
 // NewAuthorization cretes a new authorization from a give configuration.
-func NewAuthorization(cfg config.Configuration) (Authorization, error) {
-	authz := Authorization{endpoints: map[string]Endpoint{}}
+func NewAuthorization(cfg *config.Configuration) (Authorization, error) {
+	authz := Authorization{endpoints: map[string]*Endpoint{}}
 	for _, o := range cfg.Organizations {
 		baseApi, err := regexp.Compile(fmt.Sprintf(`/%s/_apis\b`, o.Name))
 		if err != nil {
-			return Authorization{}, fmt.Errorf("invalid base api regex: %v", err)
+			return Authorization{}, fmt.Errorf("invalid base api regex: %w", err)
 		}
 
 		for _, r := range o.Repositories {
@@ -53,7 +53,7 @@ func NewAuthorization(cfg config.Configuration) (Authorization, error) {
 			}
 			token, err := randomSecureToken()
 			if err != nil {
-				return Authorization{}, fmt.Errorf("could not generate random token: %v", err)
+				return Authorization{}, fmt.Errorf("could not generate random token: %w", err)
 			}
 
 			e := Endpoint{
@@ -68,29 +68,29 @@ func NewAuthorization(cfg config.Configuration) (Authorization, error) {
 				Repository:   r.Name,
 				regexes:      []*regexp.Regexp{baseApi, git, api},
 			}
-			authz.endpoints[token] = e
+			authz.endpoints[token] = &e
 		}
 	}
 
 	return authz, nil
 }
 
-func (a *Authorization) GetEndpoints() map[string]Endpoint {
+func (a *Authorization) GetEndpoints() map[string]*Endpoint {
 	return a.endpoints
 }
 
 // LookupEndpoint returns the endpoint with the matching organization, project and repository.
-// TODO (Philip): Include domain in this lookup
-func (a *Authorization) LookupEndpoint(org, proj, repo string) (Endpoint, error) {
+// TODO (Philip): Include domain in this lookup.
+func (a *Authorization) LookupEndpoint(org, proj, repo string) (*Endpoint, error) {
 	for _, v := range a.endpoints {
 		if v.Organization == org && v.Project == proj && v.Repository == repo {
 			return v, nil
 		}
 	}
-	return Endpoint{}, errors.New("endpoint not found")
+	return nil, errors.New("endpoint not found")
 }
 
-// PatForToken returns the pat associated with the token
+// PatForToken returns the pat associated with the token.
 func (a *Authorization) GetPatForToken(token string) (string, error) {
 	e, ok := a.endpoints[token]
 	if !ok {
@@ -99,7 +99,7 @@ func (a *Authorization) GetPatForToken(token string) (string, error) {
 	return e.Pat, nil
 }
 
-// TargetForToken returns the target url which matches the given token
+// TargetForToken returns the target url which matches the given token.
 func (a *Authorization) GetTargetForToken(token string) (*url.URL, error) {
 	e, ok := a.endpoints[token]
 	if !ok {
@@ -107,12 +107,12 @@ func (a *Authorization) GetTargetForToken(token string) (*url.URL, error) {
 	}
 	target, err := url.Parse(fmt.Sprintf("%s://%s", e.Scheme, e.Domain))
 	if err != nil {
-		return nil, fmt.Errorf("invalid url format: %v", err)
+		return nil, fmt.Errorf("invalid url format: %w", err)
 	}
 	return target, nil
 }
 
-// IsPermitted checks if a specific token is permitted to access a path
+// IsPermitted checks if a specific token is permitted to access a path.
 func (a *Authorization) IsPermitted(path string, token string) error {
 	e, ok := a.endpoints[token]
 	if !ok {

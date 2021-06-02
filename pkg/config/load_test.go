@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const path = "config.json"
+
 const validJson = `
 {
 	"organizations": [
@@ -78,7 +80,6 @@ func fsWithContent(path string, content string) (iofs.FS, error) {
 }
 
 func TestValidJson(t *testing.T) {
-	path := "config.json"
 	fs, err := fsWithContent(path, validJson)
 	require.NoError(t, err)
 	cfg, err := LoadConfiguration(fs, path)
@@ -94,7 +95,6 @@ func TestValidJson(t *testing.T) {
 }
 
 func TestInvalidJson(t *testing.T) {
-	path := "config.json"
 	fs, err := fsWithContent(path, invalidJson)
 	require.NoError(t, err)
 	_, err = LoadConfiguration(fs, path)
@@ -102,7 +102,6 @@ func TestInvalidJson(t *testing.T) {
 }
 
 func TestMissingPat(t *testing.T) {
-	path := "config.json"
 	fs, err := fsWithContent(path, missingPatJson)
 	require.NoError(t, err)
 	_, err = LoadConfiguration(fs, path)
@@ -110,7 +109,6 @@ func TestMissingPat(t *testing.T) {
 }
 
 func TestMissingRepositories(t *testing.T) {
-	path := "config.json"
 	fs, err := fsWithContent(path, missingRepositoriesJson)
 	require.NoError(t, err)
 	_, err = LoadConfiguration(fs, path)

@@ -8,13 +8,13 @@ import (
 )
 
 func auth() Authorization {
-	config := config.Configuration{
-		Organizations: []config.Organization{
+	config := &config.Configuration{
+		Organizations: []*config.Organization{
 			{
 				Domain: "",
 				Pat:    "",
 				Name:   "org",
-				Repositories: []config.Repository{
+				Repositories: []*config.Repository{
 					{
 						Project: "proj",
 						Name:    "repo",

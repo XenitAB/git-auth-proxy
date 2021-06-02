@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -54,10 +55,10 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 	// clean up all secrets managed by azdo-proxy
 	oldSecrets, err := t.client.CoreV1().Secrets("").List(ctx, metav1.ListOptions{LabelSelector: selectorString})
 	if err != nil {
-		return fmt.Errorf("could not list secrets: %v", err)
+		return fmt.Errorf("could not list secrets: %w", err)
 	}
-	for _, oldSecret := range oldSecrets.Items {
-		err := t.deleteSecret(ctx, oldSecret.Name, oldSecret.Namespace)
+	for i := range oldSecrets.Items {
+		err := t.deleteSecret(ctx, oldSecrets.Items[i].Name, oldSecrets.Items[i].Namespace)
 		if err != nil {
 			return err
 		}
@@ -69,7 +70,7 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 		for _, ns := range e.Namespaces {
 			err := t.createSecret(ctx, e.SecretName, ns, e.Token, labels)
 			if err != nil {
-				return fmt.Errorf("could not create initial secrets: %v", err)
+				return fmt.Errorf("could not create initial secrets: %w", err)
 			}
 		}
 	}
@@ -101,13 +102,26 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 }
 
 func (t *TokenWriter) secretUpdate(oldObj, newObj interface{}) {
-	oldSecret := oldObj.(*v1.Secret)
-	_ = t.updateSecret(context.Background(), oldSecret, oldSecret.Namespace)
+	oldSecret, ok := oldObj.(*v1.Secret)
+	if !ok {
+		t.logger.Error(errors.New("could not convert to secret"), "could not get old secret")
+		return
+	}
+
+	err := t.updateSecret(context.Background(), oldSecret, oldSecret.Namespace)
+	if err != nil {
+		t.logger.Error(err, "secret update error")
+	}
 }
 
 func (t *TokenWriter) secretDelete(obj interface{}) {
-	secret := obj.(*v1.Secret)
-	_, org, proj, repo, err := getSecretLabels(*secret)
+	secret, ok := obj.(*v1.Secret)
+	if !ok {
+		t.logger.Error(errors.New("could not convert to secret"), "could not get deleted secret")
+		return
+	}
+
+	_, org, proj, repo, err := getSecretLabels(secret)
 	if err != nil {
 		t.logger.Error(err, "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
 		return
@@ -177,9 +191,14 @@ func createSecretLabels(domain, org, proj, repo string) map[string]string {
 	}
 }
 
-func getSecretLabels(secret v1.Secret) (string, string, string, string, error) {
+func getSecretLabels(secret *v1.Secret) (string, string, string, string, error) {
 	labels := secret.ObjectMeta.Labels
-	keys := []string{"azdo-proxy.xenit.io/domain", "azdo-proxy.xenit.io/organization", "azdo-proxy.xenit.io/project", "azdo-proxy.xenit.io/repository"}
+	keys := []string{
+		"azdo-proxy.xenit.io/domain",
+		"azdo-proxy.xenit.io/organization",
+		"azdo-proxy.xenit.io/project",
+		"azdo-proxy.xenit.io/repository",
+	}
 	values := []string{}
 	for _, k := range keys {
 		v, ok := labels[k]
