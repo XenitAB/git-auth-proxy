@@ -2,203 +2,178 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
-	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/xenitab/azdo-proxy/pkg/auth"
 	"github.com/xenitab/azdo-proxy/pkg/config"
+	"github.com/xenitab/azdo-proxy/pkg/server"
+	"github.com/xenitab/azdo-proxy/pkg/token"
 )
 
 var (
-	port       int
-	configPath string
+	port           string
+	metricsPort    string
+	kubeconfigPath string
+	configPath     string
 )
 
 func init() {
-	flag.IntVar(&port, "port", 8080, "port to bind server to.")
+	flag.StringVar(&port, "port", ":8080", "port to bind proxy server to.")
+	flag.StringVar(&metricsPort, "metrics-port", ":9090", "port to bind metrics endpoint to.")
+	flag.StringVar(&kubeconfigPath, "kubeconfig", "", "absolute path to the kubeconfig file.")
 	flag.StringVar(&configPath, "config", "/var/config.json", "path to configuration file.")
 	flag.Parse()
 }
 
 func main() {
-	// Initiate logs
-	var log logr.Logger
 	zapLog, err := zap.NewProduction()
 	if err != nil {
 		panic(fmt.Sprintf("who watches the watchmen (%v)?", err))
 	}
-	log = zapr.NewLogger(zapLog)
-	setupLog := log.WithName("setup")
-
-	// Read configuration
-	setupLog.Info("Reading configuration file", "path", configPath)
-	config, err := config.LoadConfigurationFromPath(configPath)
-	if err != nil {
-		setupLog.Error(err, "Failed loading configuration")
+	logger := zapr.NewLogger(zapLog)
+	if err := run(logger, configPath, metricsPort); err != nil {
+		logger.WithName("main").Error(err, "run error")
 		os.Exit(1)
-	}
-	remote, err := url.Parse("https://" + config.Domain)
-	if err != nil {
-		setupLog.Error(err, "Invalid Azure DevOps domain")
-		os.Exit(1)
-	}
-	auth, err := auth.GenerateAuthorization(*config)
-	if err != nil {
-		setupLog.Error(err, "Could not generate authorization")
-		os.Exit(1)
-	}
-
-	// Signal handler
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	// Validate PAT with Azure DevOps
-	err = validatePat(config.Pat, config.Organization)
-	if err != nil {
-		setupLog.Error(err, "PAT is invalid")
-		os.Exit(1)
-	}
-
-	// Run PAT validation every minute
-	ticker := time.NewTicker(1 * time.Minute)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				setupLog.Info("Validating PAT")
-				err = validatePat(config.Pat, config.Organization)
-				if err != nil {
-					setupLog.Error(err, "PAT is invalid")
-					os.Exit(1)
-				}
-			case <-done:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	// Configure revers proxy and http server
-	setupLog.Info("Starting git proxy", "domain", config.Domain, "port", port)
-	proxy := httputil.NewSingleHostReverseProxy(remote)
-	router := mux.NewRouter()
-	router.HandleFunc("/readyz", readinessHandler(log.WithName("readiness"))).Methods("GET")
-	router.HandleFunc("/healthz", livenessHandler(log.WithName("liveness"))).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(proxy, log.WithName("reverse-proxy"), auth, config.Domain, config.Pat))
-	srv := &http.Server{Addr: ":" + strconv.Itoa(port), Handler: router}
-
-	// Start HTTP server
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			setupLog.Error(err, "Http Server Error")
-		}
-	}()
-	setupLog.Info("Server started")
-
-	// Blocks until singal is sent
-	<-done
-	setupLog.Info("Server stopped")
-
-	// Shutdown http server
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer func() {
-		cancel()
-	}()
-	if err := srv.Shutdown(ctx); err != nil {
-		setupLog.Error(err, "Server shutdown failed")
-		os.Exit(1)
-	}
-
-	setupLog.Info("Server exited properly")
-}
-
-func readinessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write([]byte("{\"status\": \"ok\"}")); err != nil {
-			log.Error(err, "Could not write response data")
-		}
 	}
 }
 
-func livenessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write([]byte("{\"status\": \"ok\"}")); err != nil {
-			log.Error(err, "Could not write response data")
-		}
-	}
-}
+func run(logger logr.Logger, configPath string, metricsPort string) error {
+	mainLogger := logger.WithName("main")
+	mainLogger.Info("read configuration from", "path", configPath)
+	mainLogger.Info("serve metrics", "port", metricsPort, "endpoint", "/metrics")
 
-func proxyHandler(p *httputil.ReverseProxy, log logr.Logger, a *auth.Authorization, domain string, pat string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// If basic auth is missing return error to force client to retry
-		username, password, ok := r.BasicAuth()
-		if !ok {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"Restricted\"")
-			http.Error(w, "Missing basic authentication", http.StatusUnauthorized)
-			return
-		}
-
-		t := username
-		if len(password) > 0 {
-			t = password
-		}
-
-		// Check basic auth with local auth configuration
-		err := auth.IsPermitted(a, r.URL.EscapedPath(), t)
-		if err != nil {
-			log.Error(err, "Received unauthorized request")
-			http.Error(w, "User not permitted", http.StatusForbidden)
-			return
-		}
-
-		// Forward request to destination server
-		log.Info("Authenticated request", "path", r.URL.Path)
-		r.Host = domain
-		r.Header.Del("Authorization")
-		patB64 := base64.StdEncoding.EncodeToString([]byte("pat:" + pat))
-		r.Header.Add("Authorization", "Basic "+patB64)
-
-		p.ServeHTTP(w, r)
-	}
-}
-
-func validatePat(pat string, org string) error {
-	url := fmt.Sprintf("https://dev.azure.com/%v/_apis/connectionData", org)
-	req, err := http.NewRequest("GET", url, nil)
+	authz, err := getAutorization(configPath)
 	if err != nil {
 		return err
 	}
-	patB64 := base64.StdEncoding.EncodeToString([]byte(":" + pat))
-	req.Header.Add("Authorization", "Basic "+patB64)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	client, err := getKubernetesClient(kubeconfigPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid kubernetes client: %w", err)
 	}
 
-	if resp.StatusCode != 200 {
-		return errors.New("authorization failed")
+	ctx := context.Background()
+	ctx = logr.NewContext(ctx, logger)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	g, ctx := errgroup.WithContext(ctx)
+
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(stopCh)
+
+	metricsSrv := &http.Server{Addr: metricsPort, Handler: promhttp.Handler()}
+	g.Go(func() error {
+		if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	})
+	tokenWriter := token.NewTokenWriter(logger, client, authz)
+	g.Go(func() error {
+		if err := tokenWriter.Start(ctx); err != nil {
+			return err
+		}
+		return nil
+	})
+	azdoSrv, err := server.NewAzdoServer(logger, port, authz)
+	if err != nil {
+		return fmt.Errorf("could not create azdo proxy server: %w", err)
+	}
+	g.Go(func() error {
+		if err := azdoSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	})
+
+	select {
+	case <-stopCh:
+		break
+	case <-ctx.Done():
+		break
 	}
 
+	cancel()
+
+	timeoutCtx, timeoutCancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+	defer timeoutCancel()
+	g.Go(func() error {
+		if err := metricsSrv.Shutdown(timeoutCtx); err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		if err := azdoSrv.Shutdown(timeoutCtx); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("error groups error: %w", err)
+	}
+	mainLogger.Info("gracefully shutdown")
 	return nil
+}
+
+func getAutorization(path string) (auth.Authorization, error) {
+	path, err := filepath.Rel("/", path)
+	if err != nil {
+		return auth.Authorization{}, fmt.Errorf("could not get relative path: %w", err)
+	}
+	cfg, err := config.LoadConfiguration(os.DirFS("/"), path)
+	if err != nil {
+		return auth.Authorization{}, fmt.Errorf("could not load configuration: %w", err)
+	}
+	authz, err := auth.NewAuthorization(cfg)
+	if err != nil {
+		return auth.Authorization{}, fmt.Errorf("could not generate authorization: %w", err)
+	}
+	return authz, nil
+}
+
+func getKubernetesClient(kubeconfigPath string) (*kubernetes.Clientset, error) {
+	if kubeconfigPath != "" {
+		cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+		if err != nil {
+			return nil, err
+		}
+		clientset, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return clientset, nil
+	}
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
 }

@@ -1,0 +1,21 @@
+image:
+  pullPolicy: Never
+
+config: |
+  {
+    "organizations": [
+      {
+        "domain": "test-nginx",
+        "scheme": "http",
+        "name": "org",
+        "pat": "foobar",
+        "repositories": [
+          {
+            "name": "repo",
+            "project": "proj",
+            "namespaces": ["tenant-1", "tenant-2"]
+          }
+        ]
+      }
+    ]
+  }
