@@ -87,7 +87,7 @@ func run(logger logr.Logger, configPath string, metricsPort string) error {
 	})
 	tokenWriter := token.NewTokenWriter(logger, client, authz)
 	g.Go(func() error {
-		if err := tokenWriter.Start(ctx.Done()); err != nil {
+		if err := tokenWriter.Start(ctx); err != nil {
 			return err
 		}
 		return nil

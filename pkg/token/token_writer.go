@@ -38,11 +38,8 @@ func NewTokenWriter(logger logr.Logger, client kubernetes.Interface, authz auth.
 	}
 }
 
-func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
+func (t *TokenWriter) Start(ctx context.Context) error {
 	t.logger.Info("Starting token writer")
-
-	// TODO (Philip): Fix context to list to stopCh
-	ctx := context.Background()
 
 	// create label selector string
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/managed-by": "azdo-proxy"}}
@@ -95,7 +92,7 @@ func (t *TokenWriter) Start(stopCh <-chan struct{}) error {
 			DeleteFunc: t.secretDelete,
 		},
 	)
-	informer.Run(stopCh)
+	informer.Run(ctx.Done())
 
 	t.logger.Info("Token writer stopped")
 	return nil
@@ -121,12 +118,12 @@ func (t *TokenWriter) secretDelete(obj interface{}) {
 		return
 	}
 
-	_, org, proj, repo, err := getSecretLabels(secret)
+	domain, org, proj, repo, err := getSecretLabels(secret)
 	if err != nil {
 		t.logger.Error(err, "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
 		return
 	}
-	e, err := t.authz.LookupEndpoint(org, proj, repo)
+	e, err := t.authz.LookupEndpoint(domain, org, proj, repo)
 	if err != nil {
 		t.logger.Error(err, "deleted secret does not match an endpoint", "name", secret.Name, "namespace", secret.Namespace)
 		return

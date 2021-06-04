@@ -11,7 +11,7 @@ func auth() Authorization {
 	config := &config.Configuration{
 		Organizations: []*config.Organization{
 			{
-				Domain: "",
+				Domain: "foo",
 				Pat:    "",
 				Name:   "org",
 				Repositories: []*config.Repository{
@@ -40,7 +40,7 @@ func auth() Authorization {
 
 func TestPermitted(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org/proj/_git/repo"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -49,7 +49,7 @@ func TestPermitted(t *testing.T) {
 
 func TestPermittedExtraPath(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org/proj/_git/repo/foobar/foobar"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -58,7 +58,7 @@ func TestPermittedExtraPath(t *testing.T) {
 
 func TestWrongOrg(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org1/proj/_git/repo"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -67,7 +67,7 @@ func TestWrongOrg(t *testing.T) {
 
 func TestToShortPath(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "foobar", "foobar")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "foobar", "foobar")
 	require.NoError(t, err)
 	path := "/foobar/foobar/foobar"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -76,7 +76,7 @@ func TestToShortPath(t *testing.T) {
 
 func TestWrongProject(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org/proj1/_git/repo"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -85,7 +85,7 @@ func TestWrongProject(t *testing.T) {
 
 func TestWrongRepo(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org/proj/_git/repo123"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -102,7 +102,7 @@ func TestInvalidToken(t *testing.T) {
 
 func TestWhitespace(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj%20space", "repo%20space")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj%20space", "repo%20space")
 	require.NoError(t, err)
 	path := "/org/proj%20space/_git/repo%20space"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -111,7 +111,7 @@ func TestWhitespace(t *testing.T) {
 
 func TestBaseApi(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org/_apis"
 	err = authz.IsPermitted(path, endpoint.Token)
@@ -120,7 +120,7 @@ func TestBaseApi(t *testing.T) {
 
 func TestApiPath(t *testing.T) {
 	authz := auth()
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	path := "/org/proj/_apis/git/repositories/repo/commits"
 	err = authz.IsPermitted(path, endpoint.Token)

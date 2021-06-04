@@ -18,8 +18,9 @@ func TestBasic(t *testing.T) {
 	cfg := &config.Configuration{
 		Organizations: []*config.Organization{
 			{
-				Name: "org",
-				Pat:  "test",
+				Name:   "org",
+				Domain: "foo",
+				Pat:    "test",
 				Repositories: []*config.Repository{
 					{
 						Project:            "proj",
@@ -39,13 +40,13 @@ func TestBasic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	go func() {
-		err := tokenWriter.Start(ctx.Done())
+		err := tokenWriter.Start(ctx)
 		if err != nil {
 			panic(err)
 		}
 	}()
 
-	endpoint, err := authz.LookupEndpoint("org", "proj", "repo")
+	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
 	require.NoError(t, err)
 	require.Eventuallyf(t, func() bool {
 		secret, err := client.CoreV1().Secrets("foo").Get(ctx, "azdo", v1.GetOptions{})
