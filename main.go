@@ -49,48 +49,35 @@ func main() {
 		panic(fmt.Sprintf("who watches the watchmen (%v)?", err))
 	}
 	logger := zapr.NewLogger(zapLog)
-	if err := run(logger); err != nil {
+	if err := run(logger, configPath, metricsPort); err != nil {
 		logger.WithName("main").Error(err, "run error")
 	}
 }
 
-func run(logger logr.Logger) error {
+func run(logger logr.Logger, configPath string, metricsPort string) error {
 	mainLogger := logger.WithName("main")
+	mainLogger.Info("read configuration from", "path", configPath)
+	mainLogger.Info("serve metrics", "port", metricsPort, "endpoint", "/metrics")
 
-	// Load configuration and authorization
-	mainLogger.Info("Reading configuration", "path", configPath)
-	path, err := filepath.Rel("/", configPath)
+	authz, err := getAutorization(configPath)
 	if err != nil {
-		return fmt.Errorf("could not get relative path: %w", err)
-	}
-	cfg, err := config.LoadConfiguration(os.DirFS("/"), path)
-	if err != nil {
-		return fmt.Errorf("could not load configuration: %w", err)
-	}
-	mainLogger.Info("Generating authorization")
-	authz, err := auth.NewAuthorization(cfg)
-	if err != nil {
-		return fmt.Errorf("could not generate authorization: %w", err)
+		return err
 	}
 	client, err := getKubernetesClient(kubeconfigPath)
 	if err != nil {
 		return fmt.Errorf("invalid kubernetes client: %w", err)
 	}
 
-	// Setup signal handler and error groups
 	ctx := context.Background()
 	ctx = logr.NewContext(ctx, logger)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	g, ctx := errgroup.WithContext(ctx)
 
 	stopCh := make(chan os.Signal, 1)
 	signal.Notify(stopCh, syscall.SIGTERM, syscall.SIGINT)
 	defer signal.Stop(stopCh)
 
-	g, ctx := errgroup.WithContext(ctx)
-
-	// Run services
-	mainLogger.Info("Starting metrics server", "port", metricsPort)
 	metricsSrv := &http.Server{Addr: metricsPort, Handler: promhttp.Handler()}
 	g.Go(func() error {
 		if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -98,8 +85,6 @@ func run(logger logr.Logger) error {
 		}
 		return nil
 	})
-
-	mainLogger.Info("Starting token writer")
 	tokenWriter := token.NewTokenWriter(logger, client, authz)
 	g.Go(func() error {
 		if err := tokenWriter.Start(ctx.Done()); err != nil {
@@ -107,8 +92,6 @@ func run(logger logr.Logger) error {
 		}
 		return nil
 	})
-
-	mainLogger.Info("Starting proxy server")
 	azdoSrv, err := server.NewAzdoServer(logger, port, authz)
 	if err != nil {
 		return fmt.Errorf("could not create azdo proxy server: %w", err)
@@ -120,7 +103,6 @@ func run(logger logr.Logger) error {
 		return nil
 	})
 
-	// Wait for stop signal and shutdown
 	select {
 	case <-stopCh:
 		break
@@ -135,15 +117,40 @@ func run(logger logr.Logger) error {
 		10*time.Second,
 	)
 	defer timeoutCancel()
-	go metricsSrv.Shutdown(timeoutCtx)
-	go azdoSrv.Shutdown(timeoutCtx)
+	g.Go(func() error {
+		if err := metricsSrv.Shutdown(timeoutCtx); err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		if err := azdoSrv.Shutdown(timeoutCtx); err != nil {
+			return err
+		}
+		return nil
+	})
 
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("error groups error: %w", err)
 	}
-
 	mainLogger.Info("gracefully shutdown")
 	return nil
+}
+
+func getAutorization(path string) (auth.Authorization, error) {
+	path, err := filepath.Rel("/", path)
+	if err != nil {
+		return auth.Authorization{}, fmt.Errorf("could not get relative path: %w", err)
+	}
+	cfg, err := config.LoadConfiguration(os.DirFS("/"), path)
+	if err != nil {
+		return auth.Authorization{}, fmt.Errorf("could not load configuration: %w", err)
+	}
+	authz, err := auth.NewAuthorization(cfg)
+	if err != nil {
+		return auth.Authorization{}, fmt.Errorf("could not generate authorization: %w", err)
+	}
+	return authz, nil
 }
 
 func getKubernetesClient(kubeconfigPath string) (*kubernetes.Clientset, error) {
