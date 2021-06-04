@@ -51,6 +51,7 @@ func main() {
 	logger := zapr.NewLogger(zapLog)
 	if err := run(logger, configPath, metricsPort); err != nil {
 		logger.WithName("main").Error(err, "run error")
+		os.Exit(1)
 	}
 }
 
