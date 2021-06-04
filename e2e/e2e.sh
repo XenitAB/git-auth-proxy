@@ -1,5 +1,5 @@
 #! /bin/sh
-set -e
+set -xe
 
 cleanup() {
   echo "Cleaning Up"
@@ -9,9 +9,9 @@ cleanup() {
 trap cleanup EXIT
 
 # create namespaces
-kubectl --dry-run=true -o yaml create namespace azdo-proxy | kubectl apply -f -
-kubectl --dry-run=true -o yaml create namespace tenant-1 | kubectl apply -f -
-kubectl --dry-run=true -o yaml create namespace tenant-2 | kubectl apply -f -
+kubectl --dry-run=client -o yaml create namespace azdo-proxy | kubectl apply -f -
+kubectl --dry-run=client -o yaml create namespace tenant-1 | kubectl apply -f -
+kubectl --dry-run=client -o yaml create namespace tenant-2 | kubectl apply -f -
 
 # install nginx test server
 helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -23,7 +23,7 @@ helm upgrade --install azdo-proxy ./charts/azdo-proxy --namespace azdo-proxy --s
 # wait for pods to start
 kubectl wait --for=condition=available --timeout=600s deployment/test-nginx deployment/azdo-proxy --namespace azdo-proxy
 
-# check that secrets have been created
+# check that secret have been created
 kubectl -n tenant-1 get secret org-proj-repo
 kubectl -n tenant-2 get secret org-proj-repo
 

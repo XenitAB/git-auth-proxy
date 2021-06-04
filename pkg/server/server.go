@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
-	"os"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
@@ -20,10 +18,8 @@ import (
 )
 
 type AzdoServer struct {
-	logger  logr.Logger
-	port    string
-	proxies map[string]*httputil.ReverseProxy
-	authz   auth.Authorization
+	logger logr.Logger
+	srv    *http.Server
 }
 
 func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) (*AzdoServer, error) {
@@ -36,47 +32,31 @@ func NewAzdoServer(logger logr.Logger, port string, authz auth.Authorization) (*
 		proxies[target.String()] = httputil.NewSingleHostReverseProxy(target)
 	}
 
-	return &AzdoServer{
-		logger:  logger.WithName("azdo-server"),
-		port:    port,
-		proxies: proxies,
-		authz:   authz,
-	}, nil
-}
-
-// ListenAndServe starts the HTTP server on the specified port.
-func (a *AzdoServer) ListenAndServe(stopCh <-chan struct{}) {
-	a.logger.Info("Starting git proxy", "port", a.port)
 	router := mux.NewRouter()
-
 	prometheus_mdlw := middleware.New(middleware.Config{
 		Recorder: prommetrics.NewRecorder(prommetrics.Config{
 			Prefix: "azdo_proxy",
 		}),
 	})
-
 	router.Use(std.HandlerProvider("", prometheus_mdlw))
-	router.HandleFunc("/readyz", readinessHandler(a.logger)).Methods("GET")
-	router.HandleFunc("/healthz", livenessHandler(a.logger)).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(a.logger, a.proxies, a.authz))
-	srv := &http.Server{Addr: a.port, Handler: router}
+	router.HandleFunc("/readyz", readinessHandler(logger)).Methods("GET")
+	router.HandleFunc("/healthz", livenessHandler(logger)).Methods("GET")
+	router.PathPrefix("/").HandlerFunc(proxyHandler(logger, proxies, authz))
+	srv := &http.Server{Addr: port, Handler: router}
 
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
-			a.logger.Error(err, "azdo-proxy server crashed")
-			os.Exit(1)
-		}
-	}()
+	return &AzdoServer{
+		logger: logger.WithName("azdo-server"),
+		srv:    srv,
+	}, nil
+}
 
-	<-stopCh
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// ListenAndServe starts the HTTP server on the specified port.
+func (a *AzdoServer) ListenAndServe() error {
+	return a.srv.ListenAndServe()
+}
 
-	if err := srv.Shutdown(ctx); err != nil {
-		a.logger.Error(err, "azdo-proxy server graceful shutdown failed")
-	} else {
-		a.logger.Info("azdo-proxy server stopped")
-	}
+func (a *AzdoServer) Shutdown(ctx context.Context) error {
+	return a.srv.Shutdown(ctx)
 }
 
 //nolint:lll // difficult to make this shorter right now (Philip)

@@ -5,4 +5,4 @@ metadata:
   labels:
     {{- include "azdo-proxy.labels" . | nindent 4 }}
 data:
-  config.json: {{ required "Config has to be set." .Values.config | b64enc }}
+  config.json: {{ required "Config has to be set." .Values.config | quote }}
