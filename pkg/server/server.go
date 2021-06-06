@@ -92,6 +92,7 @@ func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy,
 
 		// Overwrite the authorization header with the PAT token
 		logger.Info("Authenticated request", "path", r.URL.Path)
+		r.Host = target.Host
 		r.Header.Del("Authorization")
 		patB64 := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("pat:%s", pat)))
 		r.Header.Add("Authorization", "Basic "+patB64)
