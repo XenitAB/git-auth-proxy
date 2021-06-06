@@ -8,7 +8,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      {{- include "azdo-proxy.labels" . | nindent 6 }}
+      {{- include "azdo-proxy.selectorLabels" . | nindent 8 }}
   policyTypes:
     - Ingress
     - Egress
