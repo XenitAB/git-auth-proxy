@@ -70,28 +70,30 @@ func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy,
 			return
 		}
 
+		handlerLogger := logger.WithValues("path", r.URL.Path)
+
 		// Check basic auth with local auth configuration
 		err = authz.IsPermitted(r.URL.EscapedPath(), token)
 		if err != nil {
-			logger.Error(err, "Received unauthorized request")
+			handlerLogger.Error(err, "Received unauthorized request")
 			http.Error(w, "User not permitted", http.StatusForbidden)
 			return
 		}
 		pat, err := authz.GetPatForToken(token)
 		if err != nil {
-			logger.Error(err, "Could not find the PAT for the given token")
+			handlerLogger.Error(err, "Could not find the PAT for the given token")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		target, err := authz.GetTargetForToken(token)
 		if err != nil {
-			logger.Error(err, "Target could not be created from the token")
+			handlerLogger.Error(err, "Target could not be created from the token")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		// Overwrite the authorization header with the PAT token
-		logger.Info("Authenticated request", "path", r.URL.Path)
+		handlerLogger.Info("Authenticated request")
 		r.Host = target.Host
 		r.Header.Del("Authorization")
 		patB64 := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("pat:%s", pat)))
@@ -100,7 +102,7 @@ func proxyHandler(logger logr.Logger, proxies map[string]*httputil.ReverseProxy,
 		// Forward the request to the correct proxy
 		proxy, ok := proxies[target.String()]
 		if !ok {
-			logger.Info("missing proxy for target")
+			handlerLogger.Info("missing proxy for target")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
