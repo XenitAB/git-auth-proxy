@@ -75,6 +75,7 @@ func NewAuthorization(cfg *config.Configuration) (Authorization, error) {
 	return authz, nil
 }
 
+// GetEndpoints returns all endpoints.
 func (a *Authorization) GetEndpoints() map[string]*Endpoint {
 	return a.endpoints
 }
@@ -91,18 +92,18 @@ func (a *Authorization) LookupEndpoint(domain, org, proj, repo string) (*Endpoin
 
 // PatForToken returns the pat associated with the token.
 func (a *Authorization) GetPatForToken(token string) (string, error) {
-	e, ok := a.endpoints[token]
-	if !ok {
-		return "", errors.New("invalid token")
+	e, err := a.GetEndpointForToken(token)
+	if err != nil {
+		return "", err
 	}
 	return e.Pat, nil
 }
 
 // TargetForToken returns the target url which matches the given token.
 func (a *Authorization) GetTargetForToken(token string) (*url.URL, error) {
-	e, ok := a.endpoints[token]
-	if !ok {
-		return nil, errors.New("invalid token")
+	e, err := a.GetEndpointForToken(token)
+	if err != nil {
+		return nil, err
 	}
 	target, err := url.Parse(fmt.Sprintf("%s://%s", e.Scheme, e.Domain))
 	if err != nil {
@@ -113,16 +114,25 @@ func (a *Authorization) GetTargetForToken(token string) (*url.URL, error) {
 
 // IsPermitted checks if a specific token is permitted to access a path.
 func (a *Authorization) IsPermitted(path string, token string) error {
-	e, ok := a.endpoints[token]
-	if !ok {
-		return errors.New("invalid token")
+	e, err := a.GetEndpointForToken(token)
+	if err != nil {
+		return err
 	}
 	for _, r := range e.regexes {
 		if r.MatchString(path) {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid token")
+	return fmt.Errorf("token not permitted for path %s", path)
+}
+
+// GetEndpointForToken returns an endpoint for the specified token.
+func (a *Authorization) GetEndpointForToken(token string) (*Endpoint, error) {
+	e, ok := a.endpoints[token]
+	if !ok {
+		return nil, errors.New("endpoint not found for token")
+	}
+	return e, nil
 }
 
 func randomSecureToken() (string, error) {
