@@ -20,7 +20,7 @@ require (
 	go.uber.org/zap v1.18.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/appengine v1.6.6 // indirect
-	k8s.io/api v0.22.1
-	k8s.io/apimachinery v0.22.1
-	k8s.io/client-go v0.22.1
+	k8s.io/api v0.22.2
+	k8s.io/apimachinery v0.22.2
+	k8s.io/client-go v0.22.2
 )
