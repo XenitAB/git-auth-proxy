@@ -151,4 +151,15 @@ entries:
     urls:
     - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.2.0-rc1.tgz
     version: v0.2.0-rc1
-generated: "2021-07-07T21:57:07.760190935Z"
+  git-auth-proxy:
+  - apiVersion: v2
+    appVersion: v0.5.0
+    created: "2021-10-07T15:42:28.767600019Z"
+    description: A Helm chart for git-auth-proxy
+    digest: 76252f3a070d0fb595e553b8cb3eb99e14dcb2b0726f29484c160901f9917e80
+    name: git-auth-proxy
+    type: application
+    urls:
+    - https://XenitAB.github.io/git-auth-proxy/git-auth-proxy-v0.5.0.tgz
+    version: v0.5.0
+generated: "2021-10-07T15:42:28.767007804Z"
