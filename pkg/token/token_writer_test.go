@@ -10,8 +10,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/xenitab/azdo-proxy/pkg/auth"
-	"github.com/xenitab/azdo-proxy/pkg/config"
+	"github.com/xenitab/git-auth-proxy/pkg/auth"
+	"github.com/xenitab/git-auth-proxy/pkg/config"
 )
 
 func TestBasic(t *testing.T) {

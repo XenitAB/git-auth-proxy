@@ -1,6 +1,6 @@
 apiVersion: v2
-name: azdo-proxy
-description: A Helm chart for azdo-proxy
+name: git-auth-proxy
+description: A Helm chart for git-auth-proxy
 type: application
 version: v0.4.1
 appVersion: v0.4.1

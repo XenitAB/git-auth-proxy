@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "azdo-proxy.fullname" . }}
+  name: {{ include "git-auth-proxy.fullname" . }}
   labels:
-    {{- include "azdo-proxy.labels" . | nindent 4 }}
+    {{- include "git-auth-proxy.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "azdo-proxy.selectorLabels" . | nindent 6 }}
+      {{- include "git-auth-proxy.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -19,9 +19,9 @@ spec:
         {{- toYaml . | nindent 8 }}
     {{- end }}
       labels:
-        {{- include "azdo-proxy.selectorLabels" . | nindent 8 }}
+        {{- include "git-auth-proxy.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "azdo-proxy.fullname" . }}
+      serviceAccountName: {{ include "git-auth-proxy.fullname" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -62,7 +62,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "azdo-proxy.fullname" . }}
+            name: {{ include "git-auth-proxy.fullname" . }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}

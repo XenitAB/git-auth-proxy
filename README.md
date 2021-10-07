@@ -1,38 +1,40 @@
-# Azure DevOps Proxy
+# Git Auth Proxy
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/XenitAB/azdo-proxy)](https://goreportcard.com/report/github.com/XenitAB/azdo-proxy)
-[![Docker Repository on Quay](https://quay.io/repository/xenitab/azdo-proxy/status "Docker Repository on Quay")](https://quay.io/repository/xenitab/azdo-proxy)
+[![Go Report Card](https://goreportcard.com/badge/github.com/XenitAB/git-auth-proxy)](https://goreportcard.com/report/github.com/XenitAB/git-auth-proxy)
 
-Proxy to allow sharing of a Azure DevOps Personal Access Token in a Kubernetes cluster.
+Proxy to allow multi tenant sharing of GitHub and Azure DevOps credentials in Kubernetes.
 
-Azure DevOps allows the use of Personal Access Tokens (PAT) to authenticate access to both its
-API and Git repositories. Sadly it does not provide an API to create new PAT, making the process
-of automation cumbersome if multiple tokens are needed with limited scopes.
+Most Git providers offer mutliple ways of authenticating when cloning repositories and communicating with their API. These authentication methods are usually tied to a specific user and in the best
+case offer the ability to scope the permissions. The lack of organization API keys leads to solutions like GitHubs soltution to [create a machine user](https://docs.github.com/en/developers/overview/managing-deploy-keys#machine-users)
+that has limited permissions. The need for machine user accounts is especially important for GitOps deployment flows with projects like [Flux](https://docs.github.com/en/developers/overview/managing-deploy-keys#machine-users)
+and [ArgoCD](https://github.com/argoproj/argo-cd). These tools need an authentication method that supports accessing multiple repositories, without sharing the global credentials with all users.
 
 <p align="center">
   <img src="./assets/architecture.png">
 </p>
 
-Azure DevOps Proxy (azdo-proxy) is an attempt to solve this issue by enabling a single PAT
-to be shared by many applications, while at the same time limiting access for each application.
-Tokens are generated automatically and written as a Kubernetes secrets to one or multiple namespaces,
-the application just needs to mount the secret and use it when communicating with the proxy.
-Requests are sent to azdo-proxy together with a token, which gives access to a specific repository.
-The request is checked and if allowed forwarded to Azure DevOps with the PAT appended to the request.
+Git Auth Proxy attemps to solve this problem by implementing its own authentication and authorization layer inbetween the client and the Git provider. It works by generating static tokens that are
+specific to a Git repository. These tokens are then written to a Kubernetes secret in the Kubernetes namespaces which should have access to the repositories. When a repository is cloned through the
+proxy, the token will be checked agains the repository cloned, and if valid it will be replaced with the correct credentials. The request will be denied if a token is used to clone any other
+repository which is does not have access to.
 
 ## How To
 
-Start off by [creating a new PAT](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page) as it has to be given to the proxy.
+The proxy reads its configuration from a JSON file. It contains a list of repositories that can be accessed through the proxy and the Kubernetes namespaces which should receive a Secret.
 
-The proxy reads its configuration from a JSON file. The file will contain the PAT used to authenticate
-requests with, the Azure DevOps organization, and a list of repositories that can be accessed through
-the froxy from the specified namespaces.
+When using Azure DevOps a [PAT](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page) has to be
+configured for Git Auth Proxy to append to authorized requests.
+
 ```json
 {
   "organizations": [
     {
+      "provider": "azuredevops",
+      "azuredevops": {
+        "pat": "<PAT>"
+      },
+      "host": "dev.azure.com",
       "name": "xenitab",
-      "pat": "foobar",
       "repositories": [
         {
           "name": "fleet-infra",
@@ -48,42 +50,81 @@ the froxy from the specified namespaces.
 }
 ```
 
-Add the Helm repository and install the chart, be sure to set the config content.
-```shell
-helm repo add https://xenitab.github.io/azdo-proxy/
-helm install azdo-proxy --set config=<config>
+When using GitHub a [GitHub Application](https://docs.github.com/en/developers/apps) has to be created and installed. The PEM key needs to be extracted and passed as a base64 endoded string in the
+configuration file. Note that the project field is not required when using GitHub as projects do not exists in GitHub.
+
+```json
+{
+  "organizations": [
+    {
+      "provider": "github",
+      "github": {
+        "appID": 123,
+        "installationID: 123,
+        "privateKey: "<BASE64>"
+      },
+      "host": "github.com",
+      "name": "xenitab",
+      "repositories": [
+        {
+          "name": "fleet-infra",
+          "namespaces": [
+            "foo",
+            "bar"
+          ]
+        }
+      ]
+    }
+  ]
+}
 ```
 
-There should now be a azdo-proxy Pod and Service in the cluster, ready to proxy traffic.
+Add the Helm repository and install the chart, be sure to set the config content.
+
+```shell
+helm repo add https://xenitab.github.io/git-auth-proxy/
+helm install git-auth-proxy --set config=<config>
+```
+
+There should now be a `git-auth-proxy` Deployment and Service in the cluster, ready to proxy traffic.
 
 ### Git
 
-Cloning a repository through the proxy is not too different from doing so directly from Azure DevOps.
-The only limitation is that it is not possible to clone through ssh, as azdo-proxy only proxies HTTP traffic.
-To clone the repository `repo-1` [get the clone URL from the repository page](https://docs.microsoft.com/en-us/azure/devops/repos/git/clone?view=azure-devops&tabs=visual-studio#get-the-clone-url-to-your-repo).
-Then replace the host part of the URL with `azdo-proxy` and add the token as a basic auth parameter. The result should be similar to below.
+Cloning a repository through the proxy is not too different from doing so directly from GitHub or Azure DevOps. The only limitation is that it is not possible to clone through ssh, as Git Auth Proxy
+only proxies HTTP traffic. To clone the repository `repo-1` [get the clone URL from the repository page](https://docs.microsoft.com/en-us/azure/devops/repos/git/clone?view=azure-devops&tabs=visual-studio#get-the-clone-url-to-your-repo).
+Then replace the host part of the URL with `git-auth-proxy` and add the token as a basic auth parameter. The result should be similar to below.
+
 ```shell
-git clone http://<token-1>@azdo-proxy/org/proj/_git/repo-1
+git clone http://<token-1>@git-auth-proxy/org/proj/_git/repo-1
 ```
 
 ### API
 
-Authenticated API calls can also be done through the proxy. Currently only repository specific
-requests will be permitted. This may change in future releases. As an example execute the
-following command to list all pull requests in the repository `repo-1`.
+API calls can also be done through the proxy. Currently only repository specific requests will be permitted as authorization is done per repository. This may change in future releases.
+
+#### GitHub
+
+The proxy assumes that the requests sent to it are in a GitHub enterprise format due to the way GitHub clients behave when configured with a host that is not `github.com`. The main difference between
+GitHub Enterprise and non GitHub Enterprise is the API format. The GitHub Enterprise API expects all requests to the API to have the prefix `/api/v3/` while non GitHub Enterprise API requests are sent
+to the host `api.github.com`.
+
+#### Azure DevOps
+
+Execute the following command to list all pull requests in the repository `repo-1` using the local token to authenticate to the proxy.
+
 ```shell
-curl http://<token-1>@azdo-proxy/org/proj/_apis/git/repositories/repo-1/pullrequests?api-version=5.1
+curl http://<token-1>@git-auth-proxy/org/proj/_apis/git/repositories/repo-1/pullrequests?api-version=5.1
 ```
 
 > :warning: **If you intend on using a language specific API**: Please read this!
 
 Some APIs built by Microsoft, like [azure-devops-go-api](https://github.com/microsoft/azure-devops-go-api), will make a request to the [Resource Areas API](https://docs.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http#how-to-get-an-organizations-url)
-which returns a list of location URLs for a specific organization. They will then use those URLs
-when making additional requests, skipping the proxy. To avoid this you need to explicitly create
-your client instead of allowing it to be created automatically.
+which returns a list of location URLs for a specific organization. They will then use those URLs when making additional requests, skipping the proxy. To avoid this you need to explicitly create your
+client instead of allowing it to be created automatically.
 
 In the case of Go you should create a client in the following way.
-```golang
+
+```go
 package main
 
 import (
@@ -92,8 +133,8 @@ import (
 )
 
 func main() {
-  connection := azuredevops.NewAnonymousConnection("http://azdo-proxy")
-  client := connection.GetClientByUrl("http://azdo-proxy")
+  connection := azuredevops.NewAnonymousConnection("http://git-auth-proxy")
+  client := connection.GetClientByUrl("http://git-auth-proxy")
   gitClient := &git.ClientImpl{
     Client: *client,
   }
@@ -101,7 +142,8 @@ func main() {
 ```
 
 Instead of the cleaner solution which would ignore the proxy.
-```golang
+
+```go
 package main
 
 import (
@@ -112,7 +154,7 @@ import (
 )
 
 func main() {
-  connection := azuredevops.NewAnonymousConnection("http://azdo-proxy")
+  connection := azuredevops.NewAnonymousConnection("http://git-auth-proxy")
   ctx := context.Background()
   gitClient, _ := git.NewClient(ctx, connection)
 }

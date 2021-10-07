@@ -14,7 +14,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/xenitab/azdo-proxy/pkg/auth"
+	"github.com/xenitab/git-auth-proxy/pkg/auth"
+)
+
+const (
+	projectId  = "git-auth-proxy"
+	idLabelKey = "git-auth-proxy.xenit.io/id"
+
+	usernameValue = "git"
+	usernameKey   = "username"
+	passwordKey   = "password"
+	tokenKey      = "token"
 )
 
 type TokenWriter struct {
@@ -22,13 +32,6 @@ type TokenWriter struct {
 	client kubernetes.Interface
 	authz  *auth.Authorizer
 }
-
-const (
-	usernameValue = "git"
-	usernameKey   = "username"
-	passwordKey   = "password"
-	tokenKey      = "token"
-)
 
 func NewTokenWriter(logger logr.Logger, client kubernetes.Interface, authz *auth.Authorizer) *TokenWriter {
 	return &TokenWriter{
@@ -41,16 +44,32 @@ func NewTokenWriter(logger logr.Logger, client kubernetes.Interface, authz *auth
 func (t *TokenWriter) Start(ctx context.Context) error {
 	t.logger.Info("Starting token writer")
 
-	// create label selector string
+	// remove legacy secrets created by azdo-proxy
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/managed-by": "azdo-proxy"}}
 	labelMap, err := metav1.LabelSelectorAsMap(&labelSelector)
 	if err != nil {
 		return err
 	}
 	selectorString := labels.SelectorFromSet(labelMap).String()
-
-	// clean up all secrets managed by azdo-proxy
 	oldSecrets, err := t.client.CoreV1().Secrets("").List(ctx, metav1.ListOptions{LabelSelector: selectorString})
+	if err != nil {
+		return fmt.Errorf("could not list secrets: %w", err)
+	}
+	for i := range oldSecrets.Items {
+		err := t.deleteSecret(ctx, oldSecrets.Items[i].Name, oldSecrets.Items[i].Namespace)
+		if err != nil {
+			return err
+		}
+	}
+
+	// clean up all secrets managed by git-auth-proxy
+	labelSelector = metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/managed-by": projectId}}
+	labelMap, err = metav1.LabelSelectorAsMap(&labelSelector)
+	if err != nil {
+		return err
+	}
+	selectorString = labels.SelectorFromSet(labelMap).String()
+	oldSecrets, err = t.client.CoreV1().Secrets("").List(ctx, metav1.ListOptions{LabelSelector: selectorString})
 	if err != nil {
 		return fmt.Errorf("could not list secrets: %w", err)
 	}
@@ -118,7 +137,7 @@ func (t *TokenWriter) secretDelete(obj interface{}) {
 		return
 	}
 
-	id, ok := secret.ObjectMeta.Labels["azdo-proxy.xenit.io/id"]
+	id, ok := secret.ObjectMeta.Labels[idLabelKey]
 	if !ok {
 		t.logger.Error(fmt.Errorf("id label not found"), "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
 		return
@@ -180,7 +199,7 @@ func (t *TokenWriter) deleteSecret(ctx context.Context, name string, namespace s
 
 func createSecretLabels(id string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/managed-by": "azdo-proxy",
-		"azdo-proxy.xenit.io/id":       id,
+		"app.kubernetes.io/managed-by": projectId,
+		idLabelKey:                     id,
 	}
 }
