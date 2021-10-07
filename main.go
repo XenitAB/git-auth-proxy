@@ -22,10 +22,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/xenitab/azdo-proxy/pkg/auth"
-	"github.com/xenitab/azdo-proxy/pkg/config"
-	"github.com/xenitab/azdo-proxy/pkg/server"
-	"github.com/xenitab/azdo-proxy/pkg/token"
+	"github.com/xenitab/git-auth-proxy/pkg/auth"
+	"github.com/xenitab/git-auth-proxy/pkg/config"
+	"github.com/xenitab/git-auth-proxy/pkg/server"
+	"github.com/xenitab/git-auth-proxy/pkg/token"
 )
 
 type cfg struct {

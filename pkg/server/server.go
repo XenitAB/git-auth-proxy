@@ -11,7 +11,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
 
-	"github.com/xenitab/azdo-proxy/pkg/auth"
+	"github.com/xenitab/git-auth-proxy/pkg/auth"
 )
 
 type Server struct {

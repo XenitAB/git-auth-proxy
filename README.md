@@ -1,4 +1,4 @@
-# Azure DevOps Proxy
+# Git Auth Proxy
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/XenitAB/azdo-proxy)](https://goreportcard.com/report/github.com/XenitAB/azdo-proxy)
 [![Docker Repository on Quay](https://quay.io/repository/xenitab/azdo-proxy/status "Docker Repository on Quay")](https://quay.io/repository/xenitab/azdo-proxy)
