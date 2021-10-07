@@ -23,7 +23,7 @@ func NewServer(logger logr.Logger, port string, authz *auth.Authorizer) *Server 
 	router := mux.NewRouter()
 	prometheus_mdlw := middleware.New(middleware.Config{
 		Recorder: prommetrics.NewRecorder(prommetrics.Config{
-			Prefix: "azdo_proxy",
+			Prefix: "git_auth_proxy",
 		}),
 	})
 	router.Use(std.HandlerProvider("", prometheus_mdlw))
@@ -33,7 +33,7 @@ func NewServer(logger logr.Logger, port string, authz *auth.Authorizer) *Server 
 	srv := &http.Server{Addr: port, Handler: router}
 
 	return &Server{
-		logger: logger.WithName("azdo-server"),
+		logger: logger.WithName("git-auth-proxy"),
 		srv:    srv,
 	}
 }
