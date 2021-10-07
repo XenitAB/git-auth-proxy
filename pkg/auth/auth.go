@@ -1,120 +1,117 @@
 package auth
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
+	"context"
+	b64 "encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 
 	"github.com/xenitab/azdo-proxy/pkg/config"
 )
 
-const tokenLenght = 64
-
-type Authorization struct {
-	endpoints map[string]*Endpoint
+type Provider interface {
+	getPathRegex(organization, project, repository string) ([]*regexp.Regexp, error)
+	getAuthorizationHeader(ctx context.Context, path string) (string, error)
+	getHost(e *Endpoint, path string) string
+	getPath(e *Endpoint, path string) string
 }
 
-type Endpoint struct {
-	Pat        string
-	Domain     string
-	Scheme     string
-	Token      string
-	Namespaces []string
-	SecretName string
-
-	// metadata used for reverse lookup
-	Organization string
-	Project      string
-	Repository   string
-
-	regexes []*regexp.Regexp
+type Authorizer struct {
+	providers        map[string]Provider
+	endpoints        []*Endpoint
+	endpointsByID    map[string]*Endpoint
+	endpointsByToken map[string]*Endpoint
 }
 
-// NewAuthorization cretes a new authorization from a give configuration.
-func NewAuthorization(cfg *config.Configuration) (Authorization, error) {
-	authz := Authorization{endpoints: map[string]*Endpoint{}}
+func NewAuthorizer(cfg *config.Configuration) (*Authorizer, error) {
+	providers := map[string]Provider{}
+	endpoints := []*Endpoint{}
+	endpointsByID := map[string]*Endpoint{}
+	endpointsByToken := map[string]*Endpoint{}
+
 	for _, o := range cfg.Organizations {
-		baseApi, err := regexp.Compile(fmt.Sprintf(`/%s/_apis\b`, o.Name))
-		if err != nil {
-			return Authorization{}, fmt.Errorf("invalid base api regex: %w", err)
+		// Get the correct provider for the organization
+		var provider Provider
+		switch o.Provider {
+		case config.AzureDevOpsProviderType:
+			provider = newAzureDevops(o.AzureDevOps.Pat)
+		case config.GitHubProviderType:
+			pemData, err := b64.URLEncoding.DecodeString(o.GitHub.PrivateKey)
+			if err != nil {
+				return nil, err
+			}
+			provider, err = newGithub(o.GitHub.AppID, o.GitHub.InstallationID, pemData)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("invalid provider type %s", o.Provider)
 		}
 
+		// Create endpoints for the repositories
 		for _, r := range o.Repositories {
-			git, err := regexp.Compile(fmt.Sprintf(`/%s/%s/_git/%s(/.*)?\b`, o.Name, r.Project, r.Name))
+			pathRegex, err := provider.getPathRegex(o.Name, r.Project, r.Name)
 			if err != nil {
-				return Authorization{}, err
-			}
-			api, err := regexp.Compile(fmt.Sprintf(`/%s/%s/_apis/git/repositories/%s(/.*)?\b`, o.Name, r.Project, r.Name))
-			if err != nil {
-				return Authorization{}, err
-			}
-			token, err := randomSecureToken()
-			if err != nil {
-				return Authorization{}, fmt.Errorf("could not generate random token: %w", err)
+				return nil, fmt.Errorf("could not get path regex: %w", err)
 			}
 
-			e := Endpoint{
-				Pat:          o.Pat,
-				Domain:       o.Domain,
-				Scheme:       o.Scheme,
+			token, err := randomSecureToken()
+			if err != nil {
+				return nil, fmt.Errorf("could not generate random token: %w", err)
+			}
+
+			e := &Endpoint{
+				host:         o.Host,
+				scheme:       o.Scheme,
+				organization: o.Name,
+				project:      r.Project,
+				repository:   r.Name,
+				regexes:      pathRegex,
 				Token:        token,
 				Namespaces:   r.Namespaces,
 				SecretName:   o.GetSecretName(r),
-				Organization: o.Name,
-				Project:      r.Project,
-				Repository:   r.Name,
-				regexes:      []*regexp.Regexp{baseApi, git, api},
 			}
-			authz.endpoints[token] = &e
+
+			providers[e.ID()] = provider
+			endpoints = append(endpoints, e)
+			endpointsByID[e.ID()] = e
+			endpointsByToken[e.Token] = e
 		}
 	}
 
+	authz := &Authorizer{
+		providers:        providers,
+		endpoints:        endpoints,
+		endpointsByID:    endpointsByID,
+		endpointsByToken: endpointsByToken,
+	}
 	return authz, nil
 }
 
-// GetEndpoints returns all endpoints.
-func (a *Authorization) GetEndpoints() map[string]*Endpoint {
+func (a *Authorizer) GetEndpoints() []*Endpoint {
 	return a.endpoints
 }
 
-// LookupEndpoint returns the endpoint with the matching organization, project and repository.
-func (a *Authorization) LookupEndpoint(domain, org, proj, repo string) (*Endpoint, error) {
-	for _, e := range a.endpoints {
-		if e.Domain == domain && e.Organization == org && e.Project == proj && e.Repository == repo {
-			return e, nil
-		}
+func (a *Authorizer) GetEndpointById(id string) (*Endpoint, error) {
+	e, ok := a.endpointsByID[id]
+	if !ok {
+		return nil, fmt.Errorf("endpoint not found for id %s", id)
 	}
-	return nil, errors.New("endpoint not found")
+	return e, nil
 }
 
-// PatForToken returns the pat associated with the token.
-func (a *Authorization) GetPatForToken(token string) (string, error) {
-	e, err := a.GetEndpointForToken(token)
-	if err != nil {
-		return "", err
+func (a *Authorizer) GetEndpointByToken(token string) (*Endpoint, error) {
+	e, ok := a.endpointsByToken[token]
+	if !ok {
+		return nil, fmt.Errorf("endpoint not found for given token")
 	}
-	return e.Pat, nil
+	return e, nil
 }
 
-// TargetForToken returns the target url which matches the given token.
-func (a *Authorization) GetTargetForToken(token string) (*url.URL, error) {
-	e, err := a.GetEndpointForToken(token)
-	if err != nil {
-		return nil, err
-	}
-	target, err := url.Parse(fmt.Sprintf("%s://%s", e.Scheme, e.Domain))
-	if err != nil {
-		return nil, fmt.Errorf("invalid url format: %w", err)
-	}
-	return target, nil
-}
-
-// IsPermitted checks if a specific token is permitted to access a path.
-func (a *Authorization) IsPermitted(path string, token string) error {
-	e, err := a.GetEndpointForToken(token)
+func (a *Authorizer) IsPermitted(path string, token string) error {
+	e, err := a.GetEndpointByToken(token)
 	if err != nil {
 		return err
 	}
@@ -126,21 +123,30 @@ func (a *Authorization) IsPermitted(path string, token string) error {
 	return fmt.Errorf("token not permitted for path %s", path)
 }
 
-// GetEndpointForToken returns an endpoint for the specified token.
-func (a *Authorization) GetEndpointForToken(token string) (*Endpoint, error) {
-	e, ok := a.endpoints[token]
-	if !ok {
-		return nil, errors.New("endpoint not found for token")
-	}
-	return e, nil
-}
-
-func randomSecureToken() (string, error) {
-	b := make([]byte, tokenLenght)
-	_, err := rand.Read(b)
+func (a *Authorizer) UpdateRequest(ctx context.Context, req *http.Request, token string) (*http.Request, *url.URL, error) {
+	e, err := a.GetEndpointByToken(token)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
-	randStr := base64.URLEncoding.EncodeToString(b)
-	return randStr, nil
+	provider, ok := a.providers[e.ID()]
+	if !ok {
+		return nil, nil, fmt.Errorf("provider not found for id %s", e.ID())
+	}
+
+	host := provider.getHost(e, req.URL.Path)
+	path := provider.getPath(e, req.URL.Path)
+	authorizationHeader, err := provider.getAuthorizationHeader(ctx, req.URL.Path)
+	if err != nil {
+		return nil, nil, err
+	}
+	url, err := url.Parse(fmt.Sprintf("%s://%s", e.scheme, host))
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid url format: %w", err)
+	}
+
+	req.Host = host
+	req.URL.Path = path
+	req.Header.Del("Authorization")
+	req.Header.Add("Authorization", authorizationHeader)
+	return req, url, nil
 }
