@@ -3,7 +3,7 @@ on:
   release:
     types: [published]
 env:
-  NAME: "azdo-proxy"
+  NAME: "git-auth-proxy"
 jobs:
   helm:
     runs-on: ubuntu-latest

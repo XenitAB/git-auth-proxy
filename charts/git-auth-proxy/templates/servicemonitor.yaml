@@ -3,13 +3,13 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    {{- include "azdo-proxy.labels" . | nindent 4 }}
-  name: {{ include "azdo-proxy.fullname" . }}
+    {{- include "git-auth-proxy.labels" . | nindent 4 }}
+  name: {{ include "git-auth-proxy.fullname" . }}
 spec:
   endpoints:
   - path: /metrics
     port: metrics
   selector:
     matchLabels:
-      {{- include "azdo-proxy.selectorLabels" . | nindent 6 }}
+      {{- include "git-auth-proxy.selectorLabels" . | nindent 6 }}
 {{- end }}
