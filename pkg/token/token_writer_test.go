@@ -18,9 +18,12 @@ func TestBasic(t *testing.T) {
 	cfg := &config.Configuration{
 		Organizations: []*config.Organization{
 			{
-				Name:   "org",
-				Domain: "foo",
-				Pat:    "test",
+				Provider: "azuredevops",
+				Name:     "org",
+				Host:     "foo",
+				AzureDevOps: config.AzureDevOps{
+					Pat: "foo",
+				},
 				Repositories: []*config.Repository{
 					{
 						Project:            "proj",
@@ -32,7 +35,7 @@ func TestBasic(t *testing.T) {
 			},
 		},
 	}
-	authz, err := auth.NewAuthorization(cfg)
+	authz, err := auth.NewAuthorizer(cfg)
 	require.NoError(t, err)
 	logger := logr.Discard()
 	client := fake.NewSimpleClientset()
@@ -46,7 +49,7 @@ func TestBasic(t *testing.T) {
 		}
 	}()
 
-	endpoint, err := authz.LookupEndpoint("foo", "org", "proj", "repo")
+	endpoint, err := authz.GetEndpointById("foo-org-proj-repo")
 	require.NoError(t, err)
 	require.Eventuallyf(t, func() bool {
 		secret, err := client.CoreV1().Secrets("foo").Get(ctx, "azdo", v1.GetOptions{})
@@ -81,7 +84,7 @@ func TestBasic(t *testing.T) {
 			return false
 		}
 		return true
-	}, 5*time.Second, 1*time.Second, "secret azdo does not have correct value in namespace bar")
+	}, 15*time.Second, 1*time.Second, "secret azdo does not have correct value in namespace bar")
 
 	err = client.CoreV1().Secrets("bar").Delete(ctx, "azdo", v1.DeleteOptions{})
 	require.NoError(t, err)

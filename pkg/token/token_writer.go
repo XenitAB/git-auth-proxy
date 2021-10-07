@@ -20,7 +20,7 @@ import (
 type TokenWriter struct {
 	logger logr.Logger
 	client kubernetes.Interface
-	authz  auth.Authorization
+	authz  *auth.Authorizer
 }
 
 const (
@@ -30,7 +30,7 @@ const (
 	tokenKey      = "token"
 )
 
-func NewTokenWriter(logger logr.Logger, client kubernetes.Interface, authz auth.Authorization) *TokenWriter {
+func NewTokenWriter(logger logr.Logger, client kubernetes.Interface, authz *auth.Authorizer) *TokenWriter {
 	return &TokenWriter{
 		logger: logger,
 		client: client,
@@ -63,7 +63,7 @@ func (t *TokenWriter) Start(ctx context.Context) error {
 
 	// initial write of the new secrets
 	for _, e := range t.authz.GetEndpoints() {
-		labels := createSecretLabels(e.Domain, e.Organization, e.Project, e.Repository)
+		labels := createSecretLabels(e.ID())
 		for _, ns := range e.Namespaces {
 			err := t.createSecret(ctx, e.SecretName, ns, e.Token, labels)
 			if err != nil {
@@ -118,17 +118,17 @@ func (t *TokenWriter) secretDelete(obj interface{}) {
 		return
 	}
 
-	domain, org, proj, repo, err := getSecretLabels(secret)
-	if err != nil {
-		t.logger.Error(err, "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
+	id, ok := secret.ObjectMeta.Labels["azdo-proxy.xenit.io/id"]
+	if !ok {
+		t.logger.Error(fmt.Errorf("id label not found"), "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
 		return
 	}
-	e, err := t.authz.LookupEndpoint(domain, org, proj, repo)
+	e, err := t.authz.GetEndpointById(id)
 	if err != nil {
 		t.logger.Error(err, "deleted secret does not match an endpoint", "name", secret.Name, "namespace", secret.Namespace)
 		return
 	}
-	labels := createSecretLabels(e.Domain, e.Organization, e.Project, e.Repository)
+	labels := createSecretLabels(e.ID())
 	err = t.createSecret(context.Background(), e.SecretName, secret.Namespace, e.Token, labels)
 	if err != nil {
 		t.logger.Error(err, "Unable to created secret after deletion")
@@ -178,32 +178,9 @@ func (t *TokenWriter) deleteSecret(ctx context.Context, name string, namespace s
 	return nil
 }
 
-func createSecretLabels(domain, org, proj, repo string) map[string]string {
+func createSecretLabels(id string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/managed-by":     "azdo-proxy",
-		"azdo-proxy.xenit.io/domain":       domain,
-		"azdo-proxy.xenit.io/organization": org,
-		"azdo-proxy.xenit.io/project":      proj,
-		"azdo-proxy.xenit.io/repository":   repo,
+		"app.kubernetes.io/managed-by": "azdo-proxy",
+		"azdo-proxy.xenit.io/id":       id,
 	}
-}
-
-func getSecretLabels(secret *v1.Secret) (string, string, string, string, error) {
-	labels := secret.ObjectMeta.Labels
-	keys := []string{
-		"azdo-proxy.xenit.io/domain",
-		"azdo-proxy.xenit.io/organization",
-		"azdo-proxy.xenit.io/project",
-		"azdo-proxy.xenit.io/repository",
-	}
-	values := []string{}
-	for _, k := range keys {
-		v, ok := labels[k]
-		if !ok {
-			return "", "", "", "", fmt.Errorf("key not found in secret labels: %v", k)
-		}
-		values = append(values, v)
-	}
-
-	return values[0], values[1], values[2], values[3], nil
 }

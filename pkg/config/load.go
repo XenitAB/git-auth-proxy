@@ -2,19 +2,18 @@ package config
 
 import (
 	"encoding/json"
-	iofs "io/fs"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/spf13/afero"
 )
 
 const (
-	defaultDomain = "dev.azure.com"
 	defaultScheme = "https"
 )
 
 // LoadConfiguration parses and validates the configuration file at a given path.
-func LoadConfiguration(fs iofs.FS, path string) (*Configuration, error) {
-	b, err := iofs.ReadFile(fs, path)
+func LoadConfiguration(fs afero.Fs, path string) (*Configuration, error) {
+	b, err := afero.ReadFile(fs, path)
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +33,6 @@ func LoadConfiguration(fs iofs.FS, path string) (*Configuration, error) {
 
 func setConfigurationDefaults(cfg *Configuration) *Configuration {
 	for i, o := range cfg.Organizations {
-		if o.Domain == "" {
-			cfg.Organizations[i].Domain = defaultDomain
-		}
 		if o.Scheme == "" {
 			cfg.Organizations[i].Scheme = defaultScheme
 		}

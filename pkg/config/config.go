@@ -1,8 +1,14 @@
 package config
 
 import (
-	"fmt"
-	"net/url"
+	"strings"
+)
+
+type ProviderType string
+
+const (
+	AzureDevOpsProviderType = "azuredevops"
+	GitHubProviderType      = "github"
 )
 
 type Configuration struct {
@@ -10,26 +16,37 @@ type Configuration struct {
 }
 
 type Organization struct {
-	Name         string        `json:"name" validate:"required"`
-	Domain       string        `json:"domain,omitempty" validate:"required"`
+	Provider     ProviderType  `json:"provider" validate:"required"`
+	AzureDevOps  AzureDevOps   `json:"azuredevops"`
+	GitHub       GitHub        `json:"github"`
+	Host         string        `json:"host,omitempty" validate:"required"`
 	Scheme       string        `json:"scheme,omitempty" validate:"required"`
-	Pat          string        `json:"pat" validate:"required"`
+	Name         string        `json:"name" validate:"required"`
 	Repositories []*Repository `json:"repositories" validate:"required,dive"`
 }
 
-func (o *Organization) GetTarget() (*url.URL, error) {
-	u, err := url.Parse(fmt.Sprintf("%s://%s", o.Scheme, o.Domain))
-	if err != nil {
-		return nil, err
-	}
-	return u, nil
+type AzureDevOps struct {
+	Pat string `json:"pat"`
+}
+
+type GitHub struct {
+	AppID          int64  `json:"appID"`
+	InstallationID int64  `json:"installationID"`
+	PrivateKey     string `json:"privateKey"`
 }
 
 func (o *Organization) GetSecretName(r *Repository) string {
 	if r.SecretNameOverride != "" {
 		return r.SecretNameOverride
 	}
-	return fmt.Sprintf("%s-%s-%s", o.Name, r.Project, r.Name)
+
+	comps := []string{}
+	comps = append(comps, o.Name)
+	if r.Project != "" {
+		comps = append(comps, r.Project)
+	}
+	comps = append(comps, r.Name)
+	return strings.Join(comps, "-")
 }
 
 type Repository struct {

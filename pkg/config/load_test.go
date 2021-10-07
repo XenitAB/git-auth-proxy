@@ -1,7 +1,6 @@
 package config
 
 import (
-	iofs "io/fs"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -14,9 +13,12 @@ const validJson = `
 {
 	"organizations": [
 		{
-			"domain": "dev.azure.com",
+      "provider": "azuredevops",
+			"host": "dev.azure.com",
 			"name": "xenitab",
-			"pat": "foobar",
+			"azuredevops": {
+        "pat": "foobar"
+      },
 			"repositories": [
 				{
 					"name": "gitops-deployment",
@@ -31,7 +33,7 @@ const validJson = `
 
 const invalidJson = `
 {
-  "domain": "dev.azure.com",
+  "host": "dev.azure.com",
 	}}
 }
 `
@@ -40,7 +42,8 @@ const missingPatJson = `
 {
 	"organizations": [
 		{
-			"domain": "dev.azure.com",
+      "provider": "azuredevops",
+			"host": "dev.azure.com",
 			"name": "xenitab",
 			"repositories": [
 				{
@@ -57,15 +60,15 @@ const missingRepositoriesJson = `
 {
 	"organizations": [
 		{
-			"domain": "dev.azure.com",
+      "provider": "azuredevops",
+			"host": "dev.azure.com",
 			"name": "xenitab",
-			"pat": "foobar"
 		}
 	]
 }
 `
 
-func fsWithContent(path string, content string) (iofs.FS, error) {
+func fsWithContent(path string, content string) (afero.Fs, error) {
 	fs := afero.NewMemMapFs()
 	file, err := fs.Create(path)
 	if err != nil {
@@ -76,7 +79,7 @@ func fsWithContent(path string, content string) (iofs.FS, error) {
 	if err != nil {
 		return nil, err
 	}
-	return afero.NewIOFS(fs), nil
+	return fs, nil
 }
 
 func TestValidJson(t *testing.T) {
@@ -85,10 +88,10 @@ func TestValidJson(t *testing.T) {
 	cfg, err := LoadConfiguration(fs, path)
 	require.NoError(t, err)
 	require.NotEmpty(t, cfg.Organizations)
-	require.Equal(t, "dev.azure.com", cfg.Organizations[0].Domain)
+	require.Equal(t, "dev.azure.com", cfg.Organizations[0].Host)
 	require.Equal(t, "https", cfg.Organizations[0].Scheme)
 	require.Equal(t, "xenitab", cfg.Organizations[0].Name)
-	require.Equal(t, "foobar", cfg.Organizations[0].Pat)
+	require.Equal(t, "foobar", cfg.Organizations[0].AzureDevOps.Pat)
 	require.NotEmpty(t, cfg.Organizations[0].Repositories)
 	require.Equal(t, "gitops-deployment", cfg.Organizations[0].Repositories[0].Name)
 	require.Equal(t, "Lab", cfg.Organizations[0].Repositories[0].Project)
