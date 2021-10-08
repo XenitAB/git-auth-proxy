@@ -29,10 +29,10 @@ import (
 )
 
 type cfg struct {
-	Addr           string `flag:"addr" default:":8080"`
-	MetricsAddr    string `flag:"metrics-addr" default:":9090"`
+	Addr           string `flag:"addr" default:":8080" required:"true"`
+	MetricsAddr    string `flag:"metrics-addr" default:":9090" required:"true"`
+	ConfigPath     string `flag:"config" required:"true"`
 	KubeconfigPath string `flag:"kubeconfig"`
-	ConfigPath     string `flag:"config"`
 }
 
 func main() {

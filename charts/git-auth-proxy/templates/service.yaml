@@ -17,3 +17,25 @@ spec:
       name: metrics
   selector:
     {{- include "git-auth-proxy.selectorLabels" . | nindent 4 }}
+---
+# This service is left for legacy reasons as the project used to be called azdo-proxy.
+# The service should be removed eventually as all applications change the service name they use.
+apiVersion: v1
+kind: Service
+metadata:
+  name: azdo-proxy
+  labels:
+    {{- include "git-auth-proxy.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "git-auth-proxy.selectorLabels" . | nindent 4 }}
