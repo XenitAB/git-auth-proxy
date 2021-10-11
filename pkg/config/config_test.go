@@ -58,6 +58,7 @@ const validAzureDevOps = `
 }
 `
 
+// nolint:dupl // false positive
 func TestValidAzureDevOps(t *testing.T) {
 	fs, path, err := fsWithContent(validAzureDevOps)
 	require.NoError(t, err)
@@ -101,6 +102,7 @@ const validGitHub = `
 }
 `
 
+// nolint:dupl // false positive
 func TestValidGitHub(t *testing.T) {
 	fs, path, err := fsWithContent(validGitHub)
 	require.NoError(t, err)
