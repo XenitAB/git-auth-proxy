@@ -48,6 +48,15 @@ func TestAzureDevOpsPermitted(t *testing.T) {
 	require.NoError(t, err, "token should be permitted")
 }
 
+func TestAzureDevOpsPermittedCaseInsensitive(t *testing.T) {
+	authz := getAzureDevOpsAuthorizer()
+	endpoint, err := authz.GetEndpointById("foo-org-proj-repo")
+	require.NoError(t, err)
+	path := "/Org/proJ/_git/repo"
+	err = authz.IsPermitted(path, endpoint.Token)
+	require.NoError(t, err, "token should be permitted")
+}
+
 func TestAzureDevOpsPermittedExtraPath(t *testing.T) {
 	authz := getAzureDevOpsAuthorizer()
 	endpoint, err := authz.GetEndpointById("foo-org-proj-repo")

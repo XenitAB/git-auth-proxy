@@ -18,15 +18,15 @@ func newAzureDevops(pat string) *azureDevops {
 }
 
 func (a *azureDevops) getPathRegex(organization, project, repository string) ([]*regexp.Regexp, error) {
-	baseApi, err := regexp.Compile(fmt.Sprintf(`/%s/_apis\b`, organization))
+	baseApi, err := regexp.Compile(fmt.Sprintf(`(?i)/%s/_apis\b`, organization))
 	if err != nil {
 		return nil, fmt.Errorf("invalid base api regex: %w", err)
 	}
-	git, err := regexp.Compile(fmt.Sprintf(`/%s/%s/_git/%s(/.*)?\b`, organization, project, repository))
+	git, err := regexp.Compile(fmt.Sprintf(`(?i)/%s/%s/_git/%s(/.*)?\b`, organization, project, repository))
 	if err != nil {
 		return nil, err
 	}
-	api, err := regexp.Compile(fmt.Sprintf(`/%s/%s/_apis/git/repositories/%s(/.*)?\b`, organization, project, repository))
+	api, err := regexp.Compile(fmt.Sprintf(`(?i)/%s/%s/_apis/git/repositories/%s(/.*)?\b`, organization, project, repository))
 	if err != nil {
 		return nil, err
 	}

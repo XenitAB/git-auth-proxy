@@ -23,7 +23,7 @@ repository which is does not have access to.
 The proxy reads its configuration from a JSON file. It contains a list of repositories that can be accessed through the proxy and the Kubernetes namespaces which should receive a Secret.
 
 When using Azure DevOps a [PAT](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page) has to be
-configured for Git Auth Proxy to append to authorized requests.
+configured for Git Auth Proxy to append to authorized requests. Note that organization and repository names are matched case-insensitive.
 
 ```json
 {
