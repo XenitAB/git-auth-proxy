@@ -62,6 +62,11 @@ func TestGitHubAuthorization(t *testing.T) {
 			allow: true,
 		},
 		{
+			name:  "allow repo",
+			path:  "/Org/repO",
+			allow: true,
+		},
+		{
 			name:  "allow api",
 			path:  "/api/v3/org/repo",
 			allow: true,

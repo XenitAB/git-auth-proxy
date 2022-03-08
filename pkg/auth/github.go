@@ -30,11 +30,11 @@ func newGithub(appID, installationID int64, privateKey []byte) (*github, error) 
 }
 
 func (g *github) getPathRegex(organization, project, repository string) ([]*regexp.Regexp, error) {
-	git, err := regexp.Compile(fmt.Sprintf(`/%s/%s(/.*)?\b`, organization, repository))
+	git, err := regexp.Compile(fmt.Sprintf(`(?i)/%s/%s(/.*)?\b`, organization, repository))
 	if err != nil {
 		return nil, err
 	}
-	api, err := regexp.Compile(fmt.Sprintf(`/api/v3/(.*)/%s/%s/(/.*)?\b`, organization, repository))
+	api, err := regexp.Compile(fmt.Sprintf(`(?i)/api/v3/(.*)/%s/%s/(/.*)?\b`, organization, repository))
 	if err != nil {
 		return nil, err
 	}

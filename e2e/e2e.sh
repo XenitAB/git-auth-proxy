@@ -33,7 +33,7 @@ PID=$!
 sleep 2
 TOKEN=$(kubectl -n tenant-1 get secret org-proj-repo --template={{.data.token}} | base64 -d -w 0)
 
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u username:$TOKEN http://localhost:8080/org/proj/_apis/git/repositories/repo)
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u username:$TOKEN http://localhost:8080/Org/proj/_apis/git/repositories/repo)
 if [ $STATUS != "200" ]; then
   exit 1
 fi
