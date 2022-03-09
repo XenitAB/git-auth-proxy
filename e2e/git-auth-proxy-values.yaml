@@ -5,10 +5,13 @@ config: |
   {
     "organizations": [
       {
-        "domain": "test-nginx",
-        "scheme": "http",
         "name": "org",
-        "pat": "foobar",
+        "provider": "azuredevops",
+        "azuredevops": {
+          "pat": "foobar"
+        },
+        "host": "test-nginx",
+        "scheme": "http",
         "repositories": [
           {
             "name": "repo",
