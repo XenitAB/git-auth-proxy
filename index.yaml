@@ -154,9 +154,9 @@ entries:
   git-auth-proxy:
   - apiVersion: v2
     appVersion: v0.6.0
-    created: "2022-03-09T12:15:51.030453927Z"
+    created: "2022-03-09T12:37:03.932778906Z"
     description: A Helm chart for git-auth-proxy
-    digest: 738431b011aa0be53addb2cd00b0896d90b2b42c8dc62d9a969e8216c539bb28
+    digest: ae81025aa93161893e24d9068ca7eff0cb0d1171328cd8617599762929863893
     name: git-auth-proxy
     type: application
     urls:
@@ -192,4 +192,4 @@ entries:
     urls:
     - https://XenitAB.github.io/git-auth-proxy/git-auth-proxy-v0.5.0.tgz
     version: v0.5.0
-generated: "2022-03-09T12:15:51.029724028Z"
+generated: "2022-03-09T12:37:03.931867397Z"
