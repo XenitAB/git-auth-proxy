@@ -82,8 +82,8 @@ configuration file. Note that the project field is not required when using GitHu
 Add the Helm repository and install the chart, be sure to set the config content.
 
 ```shell
-helm repo add https://xenitab.github.io/git-auth-proxy/
-helm install git-auth-proxy --set config=<config-json>
+kubectl create namespace git-auth-proxy
+helm upgrade --install --version <version> git-auth-proxy oci://ghcr.io/xenitab/helm-charts/git-auth-proxy
 ```
 
 There should now be a `git-auth-proxy` Deployment and Service in the cluster, ready to proxy traffic.
