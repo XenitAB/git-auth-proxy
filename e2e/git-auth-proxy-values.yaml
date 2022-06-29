@@ -17,6 +17,12 @@ config: |
             "name": "repo",
             "project": "proj",
             "namespaces": ["tenant-1", "tenant-2"]
+          },
+          {
+            "name": "repo%20space",
+            "project": "proj",
+            "namespaces": ["tenant-1", "tenant-2"],
+            "secretNameOverride": "foobar"
           }
         ]
       }
