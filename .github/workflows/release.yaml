@@ -36,7 +36,7 @@ jobs:
             VERSION=${GITHUB_REF/refs\/tags\//}
           fi
           echo ::set-output name=BUILD_DATE::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          echo ::set-output name=VERSION::${VERSION}
+          echo ::set-output name=VERSION::v0.0.1
       - name: Get GitHub Tag
         id: get_tag
         run: |
