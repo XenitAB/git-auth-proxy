@@ -1,6 +1,5 @@
 name: release
 on:
-  pull_request:
   release:
     types: [published]
 env:
@@ -36,11 +35,11 @@ jobs:
             VERSION=${GITHUB_REF/refs\/tags\//}
           fi
           echo ::set-output name=BUILD_DATE::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          echo ::set-output name=VERSION::v0.0.1
+          echo ::set-output name=VERSION::${VERSION}
       - name: Get GitHub Tag
         id: get_tag
         run: |
-          echo "::set-output name=tag:v0.0.1"
+          echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
       - name: Cache container layers
         uses: actions/cache@v3
         with:
