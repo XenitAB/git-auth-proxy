@@ -40,7 +40,7 @@ jobs:
       - name: Get GitHub Tag
         id: get_tag
         run: |
-          echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
+          echo "::set-output name=tag:v0.0.1"
       - name: Cache container layers
         uses: actions/cache@v3
         with:
