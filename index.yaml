@@ -9,7 +9,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.4.2.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.4.2.tgz
     version: v0.4.2
   - apiVersion: v2
     appVersion: v0.4.1
@@ -19,7 +19,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.4.1.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.4.1.tgz
     version: v0.4.1
   - apiVersion: v2
     appVersion: v0.4.0
@@ -29,7 +29,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.4.0.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.4.0.tgz
     version: v0.4.0
   - apiVersion: v2
     appVersion: v0.4.0-rc1
@@ -39,7 +39,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.4.0-rc1.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.4.0-rc1.tgz
     version: v0.4.0-rc1
   - apiVersion: v2
     appVersion: v0.3.6
@@ -49,7 +49,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.7.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.7.tgz
     version: v0.3.7
   - apiVersion: v2
     appVersion: v0.3.6
@@ -59,7 +59,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.6.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.6.tgz
     version: v0.3.6
   - apiVersion: v2
     appVersion: v0.3.5
@@ -69,7 +69,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.5.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.5.tgz
     version: v0.3.5
   - apiVersion: v2
     appVersion: v0.3.4
@@ -79,7 +79,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.4.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.4.tgz
     version: v0.3.4
   - apiVersion: v2
     appVersion: v0.3.3
@@ -89,7 +89,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.3.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.3.tgz
     version: v0.3.3
   - apiVersion: v2
     appVersion: v0.3.2
@@ -99,7 +99,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.2.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.2.tgz
     version: v0.3.2
   - apiVersion: v2
     appVersion: v0.3.0
@@ -109,7 +109,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.3.0.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.3.0.tgz
     version: v0.3.0
   - apiVersion: v2
     appVersion: v0.2.1
@@ -119,7 +119,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.2.1.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.2.1.tgz
     version: v0.2.1
   - apiVersion: v2
     appVersion: v0.2.0
@@ -129,7 +129,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.2.0.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.2.0.tgz
     version: v0.2.0
   - apiVersion: v2
     appVersion: v0.2.0-rc2
@@ -139,7 +139,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.2.0-rc2.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.2.0-rc2.tgz
     version: v0.2.0-rc2
   - apiVersion: v2
     appVersion: v0.2.0-rc1
@@ -149,7 +149,7 @@ entries:
     name: azdo-proxy
     type: application
     urls:
-    - https://XenitAB.github.io/azdo-proxy/azdo-proxy-v0.2.0-rc1.tgz
+    - https://XenitAB.github.io/git-auth-proxy/azdo-proxy-v0.2.0-rc1.tgz
     version: v0.2.0-rc1
   git-auth-proxy:
   - apiVersion: v2
