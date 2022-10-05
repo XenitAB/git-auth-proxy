@@ -27,20 +27,18 @@ import (
 
 func main() {
 	var args struct {
-		Addr           string `arg:"--addr" default:":8080"`
-		MetricsAddr    string `arg:"--metrics-addr" default:":9090"`
+		Addr           string `arg:"--addr,required" default:":8080"`
+		MetricsAddr    string `arg:"--metrics-addr,required" default:":9090"`
 		CfgPath        string `arg:"--config,required"`
 		KubeconfigPath string `arg:"--kubeconfig"`
 	}
 	arg.MustParse(&args)
-
 	zapLog, err := zap.NewProduction()
 	if err != nil {
 		fmt.Printf("who watches the watchmen (%v)?", err)
 		os.Exit(1)
 	}
 	logger := zapr.NewLogger(zapLog)
-
 	if err := run(logger, args.Addr, args.MetricsAddr, args.CfgPath, args.KubeconfigPath); err != nil {
 		logger.WithName("main").Error(err, "run error")
 		os.Exit(1)
@@ -52,6 +50,7 @@ func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) 
 	if err != nil {
 		return err
 	}
+
 	client, err := kubernetes.GetKubernetesClientset(kubeconfigPath)
 	if err != nil {
 		return err
