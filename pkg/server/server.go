@@ -22,7 +22,7 @@ func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server 
 	router := pkggin.Default(logger)
 	router.GET("/readyz", readinessHandler)
 	router.GET("/healthz", livenessHandler)
-	router.Any("/", proxyHandler(authz))
+	router.NoRoute(proxyHandler(authz))
 	srv := &http.Server{ReadTimeout: 5 * time.Second, Addr: addr, Handler: router}
 	return &Server{
 		srv: srv,
