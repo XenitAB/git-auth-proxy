@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-logr/logr"
@@ -22,7 +23,7 @@ func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server 
 	router.GET("/readyz", readinessHandler)
 	router.GET("/healthz", livenessHandler)
 	router.Any("/", proxyHandler(authz))
-	srv := &http.Server{Addr: addr, Handler: router}
+	srv := &http.Server{ReadTimeout: 5 * time.Second, Addr: addr, Handler: router}
 	return &Server{
 		srv: srv,
 	}
@@ -56,6 +57,7 @@ func proxyHandler(authz *auth.Authorizer) gin.HandlerFunc {
 		// Check basic auth with local auth configuration
 		err = authz.IsPermitted(c.Request.URL.EscapedPath(), token)
 		if err != nil {
+			//nolint: errcheck //ignore
 			c.Error(fmt.Errorf("Received unauthorized request: %w", err))
 			c.String(http.StatusForbidden, "User not permitted")
 			return
@@ -63,6 +65,7 @@ func proxyHandler(authz *auth.Authorizer) gin.HandlerFunc {
 		// Authenticate the request with the proper token
 		req, url, err := authz.UpdateRequest(c.Request.Context(), c.Request, token)
 		if err != nil {
+			//nolint: errcheck //ignore
 			c.Error(fmt.Errorf("Could not authenticate request: %w", err))
 			c.String(http.StatusInternalServerError, "Internal server error")
 			return
