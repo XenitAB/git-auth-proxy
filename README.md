@@ -160,7 +160,36 @@ func main() {
 }
 ```
 
-# License
+#### Spaces in names
+
+In Azure DevOps spaces are allowed in project names. To support this use `%20` instead of a space.
+So `test%20lab` instead of `test lab`.
+
+```json
+{
+  "organizations": [
+    {
+      "provider": "azuredevops",
+      "azuredevops": {
+        "pat": "<PAT>"
+      },
+      "host": "dev.azure.com",
+      "name": "xenitab",
+      "repositories": [
+        {
+          "name": "fleet-infra",
+          "project": "test%20lab",
+          "namespaces": [
+            "foo",
+            "bar"
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
