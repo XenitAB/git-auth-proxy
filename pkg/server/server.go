@@ -2,39 +2,30 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-logr/logr"
-	"github.com/gorilla/mux"
-	prommetrics "github.com/slok/go-http-metrics/metrics/prometheus"
-	"github.com/slok/go-http-metrics/middleware"
-	"github.com/slok/go-http-metrics/middleware/std"
+	pkggin "github.com/xenitab/pkg/gin"
 
 	"github.com/xenitab/git-auth-proxy/pkg/auth"
 )
 
 type Server struct {
-	logger logr.Logger
-	srv    *http.Server
+	srv *http.Server
 }
 
-func NewServer(logger logr.Logger, port string, authz *auth.Authorizer) *Server {
-	router := mux.NewRouter()
-	prometheus_mdlw := middleware.New(middleware.Config{
-		Recorder: prommetrics.NewRecorder(prommetrics.Config{
-			Prefix: "git_auth_proxy",
-		}),
-	})
-	router.Use(std.HandlerProvider("", prometheus_mdlw))
-	router.HandleFunc("/readyz", readinessHandler(logger)).Methods("GET")
-	router.HandleFunc("/healthz", livenessHandler(logger)).Methods("GET")
-	router.PathPrefix("/").HandlerFunc(proxyHandler(logger, authz))
-	srv := &http.Server{Addr: port, Handler: router}
-
+func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server {
+	router := pkggin.Default(logger)
+	router.GET("/readyz", readinessHandler)
+	router.GET("/healthz", livenessHandler)
+	router.NoRoute(proxyHandler(authz))
+	srv := &http.Server{ReadTimeout: 5 * time.Second, Addr: addr, Handler: router}
 	return &Server{
-		logger: logger.WithName("git-auth-proxy"),
-		srv:    srv,
+		srv: srv,
 	}
 }
 
@@ -46,57 +37,43 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.srv.Shutdown(ctx)
 }
 
-func proxyHandler(logger logr.Logger, authz *auth.Authorizer) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		ctx := context.Background()
-		handlerLogger := logger.WithValues("path", req.URL.Path)
+func readinessHandler(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
 
+func livenessHandler(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+func proxyHandler(authz *auth.Authorizer) gin.HandlerFunc {
+	return func(c *gin.Context) {
 		// Get the token from the request
-		token, err := getTokenFromRequest(req)
+		token, err := getTokenFromRequest(c.Request)
 		if err != nil {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"Restricted\"")
-			http.Error(w, "Missing basic authentication", http.StatusUnauthorized)
+			c.Header("WWW-Authenticate", "Basic realm=\"Restricted\"")
+			c.String(http.StatusUnauthorized, "Missing basic authentication")
 			return
 		}
 		// Check basic auth with local auth configuration
-		err = authz.IsPermitted(req.URL.EscapedPath(), token)
+		err = authz.IsPermitted(c.Request.URL.EscapedPath(), token)
 		if err != nil {
-			handlerLogger.Error(err, "Received unauthorized request")
-			http.Error(w, "User not permitted", http.StatusForbidden)
+			//nolint: errcheck //ignore
+			c.Error(fmt.Errorf("Received unauthorized request: %w", err))
+			c.String(http.StatusForbidden, "User not permitted")
 			return
 		}
 		// Authenticate the request with the proper token
-		req, url, err := authz.UpdateRequest(ctx, req, token)
+		req, url, err := authz.UpdateRequest(c.Request.Context(), c.Request, token)
 		if err != nil {
-			handlerLogger.Error(err, "Could not authenticate request")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			//nolint: errcheck //ignore
+			c.Error(fmt.Errorf("Could not authenticate request: %w", err))
+			c.String(http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		handlerLogger.Info("Authenticated request")
 
 		// TODO (Philip): Add caching of the proxy
 		// Forward the request to the correct proxy
 		proxy := httputil.NewSingleHostReverseProxy(url)
-		proxy.ServeHTTP(w, req)
-	}
-}
-
-func readinessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write([]byte("{\"status\": \"ok\"}")); err != nil {
-			log.Error(err, "Could not write response data")
-		}
-	}
-}
-
-func livenessHandler(log logr.Logger) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write([]byte("{\"status\": \"ok\"}")); err != nil {
-			log.Error(err, "Could not write response data")
-		}
+		proxy.ServeHTTP(c.Writer, req)
 	}
 }

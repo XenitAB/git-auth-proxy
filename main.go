@@ -62,7 +62,7 @@ func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) 
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
 
-	metricsSrv := &http.Server{Addr: metricsAddr, Handler: promhttp.Handler()}
+	metricsSrv := &http.Server{ReadTimeout: 5 * time.Second, Addr: metricsAddr, Handler: promhttp.Handler()}
 	g.Go(func() error {
 		if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
