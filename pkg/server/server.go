@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server {
-	router := pkggin.Default(logger)
+	router := pkggin.Default(logger, "proxy")
 	router.GET("/readyz", readinessHandler)
 	router.GET("/healthz", livenessHandler)
 	router.NoRoute(proxyHandler(authz))
