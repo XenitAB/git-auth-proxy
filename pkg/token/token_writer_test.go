@@ -29,7 +29,7 @@ func TestBasic(t *testing.T) {
 						Project:            "proj",
 						Name:               "repo",
 						Namespaces:         []string{"foo", "bar"},
-						SecretNameOverride: "azdo",
+						SecretNameOverride: "git-auth",
 					},
 				},
 			},
@@ -52,7 +52,7 @@ func TestBasic(t *testing.T) {
 	endpoint, err := authz.GetEndpointById("foo-org-proj-repo")
 	require.NoError(t, err)
 	require.Eventuallyf(t, func() bool {
-		secret, err := client.CoreV1().Secrets("foo").Get(ctx, "azdo", v1.GetOptions{})
+		secret, err := client.CoreV1().Secrets("foo").Get(ctx, "git-auth", v1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -64,15 +64,15 @@ func TestBasic(t *testing.T) {
 			return false
 		}
 		return true
-	}, 5*time.Second, 1*time.Second, "secret azdo not found in namespace foo")
+	}, 5*time.Second, 1*time.Second, "secret git-auth not found in namespace foo")
 
-	secret, err := client.CoreV1().Secrets("bar").Get(ctx, "azdo", v1.GetOptions{})
+	secret, err := client.CoreV1().Secrets("bar").Get(ctx, "git-auth", v1.GetOptions{})
 	require.NoError(t, err)
 	secret.StringData["token"] = "stuff"
 	_, err = client.CoreV1().Secrets("bar").Update(ctx, secret, v1.UpdateOptions{})
 	require.NoError(t, err)
 	require.Eventuallyf(t, func() bool {
-		secret, err := client.CoreV1().Secrets("bar").Get(ctx, "azdo", v1.GetOptions{})
+		secret, err := client.CoreV1().Secrets("bar").Get(ctx, "git-auth", v1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -84,12 +84,12 @@ func TestBasic(t *testing.T) {
 			return false
 		}
 		return true
-	}, 15*time.Second, 1*time.Second, "secret azdo does not have correct value in namespace bar")
+	}, 15*time.Second, 1*time.Second, "secret git-auth does not have correct value in namespace bar")
 
-	err = client.CoreV1().Secrets("bar").Delete(ctx, "azdo", v1.DeleteOptions{})
+	err = client.CoreV1().Secrets("bar").Delete(ctx, "git-auth", v1.DeleteOptions{})
 	require.NoError(t, err)
 	require.Eventuallyf(t, func() bool {
-		secret, err := client.CoreV1().Secrets("bar").Get(ctx, "azdo", v1.GetOptions{})
+		secret, err := client.CoreV1().Secrets("bar").Get(ctx, "git-auth", v1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -101,5 +101,5 @@ func TestBasic(t *testing.T) {
 			return false
 		}
 		return true
-	}, 5*time.Second, 1*time.Second, "secret azdo not found in namespace bar")
+	}, 5*time.Second, 1*time.Second, "secret git-auth not found in namespace bar")
 }
