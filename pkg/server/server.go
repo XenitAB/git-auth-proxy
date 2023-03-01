@@ -23,7 +23,7 @@ func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server 
 	router.GET("/readyz", readinessHandler)
 	router.GET("/healthz", livenessHandler)
 	router.NoRoute(proxyHandler(authz))
-	srv := &http.Server{ReadTimeout: 5 * time.Second, Addr: addr, Handler: router}
+	srv := &http.Server{ReadTimeout: 30 * time.Second, Addr: addr, Handler: router}
 	return &Server{
 		srv: srv,
 	}
