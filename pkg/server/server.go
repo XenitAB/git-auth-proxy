@@ -23,7 +23,9 @@ func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server 
 	router.GET("/readyz", readinessHandler)
 	router.GET("/healthz", livenessHandler)
 	router.NoRoute(proxyHandler(authz))
-	srv := &http.Server{ReadTimeout: 30 * time.Second, Addr: addr, Handler: router}
+	// The ReadTimeout is set to 5 min make sure that strange requests don't live forever
+	// But in general the external request should set a good timeout value for it's request.
+	srv := &http.Server{ReadTimeout: 5 * time.Minute, Addr: addr, Handler: router}
 	return &Server{
 		srv: srv,
 	}
