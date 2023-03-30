@@ -84,12 +84,15 @@ func (t *TokenWriter) Start(ctx context.Context) error {
 		},
 		&v1.Secret{}, 0, cache.Indexers{},
 	)
-	informer.AddEventHandler(
+	_, err = informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			UpdateFunc: t.secretUpdated,
 			DeleteFunc: t.secretDeleted,
 		},
 	)
+	if err != nil {
+		return err
+	}
 	informer.Run(ctx.Done())
 
 	t.logger.Info("Token writer stopped")
