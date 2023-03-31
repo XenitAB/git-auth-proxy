@@ -18,9 +18,9 @@ type Server struct {
 	srv *http.Server
 }
 
-func NewServer(logger logr.Logger, addr string, authz *auth.Authorizer) *Server {
+func NewServer(ctx context.Context, addr string, authz *auth.Authorizer) *Server {
 	cfg := pkggin.DefaultConfig()
-	cfg.LogConfig.Logger = logger
+	cfg.LogConfig.Logger = logr.FromContextOrDiscard(ctx)
 	cfg.MetricsConfig.HandlerID = "proxy"
 	router := pkggin.NewEngine(cfg)
 	router.GET("/readyz", readinessHandler)

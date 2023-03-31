@@ -28,21 +28,20 @@ const (
 )
 
 type TokenWriter struct {
-	logger logr.Logger
 	client kubernetes.Interface
 	authz  *auth.Authorizer
 }
 
-func NewTokenWriter(logger logr.Logger, client kubernetes.Interface, authz *auth.Authorizer) *TokenWriter {
+func NewTokenWriter(client kubernetes.Interface, authz *auth.Authorizer) *TokenWriter {
 	return &TokenWriter{
-		logger: logger,
 		client: client,
 		authz:  authz,
 	}
 }
 
 func (t *TokenWriter) Start(ctx context.Context) error {
-	t.logger.Info("Starting token writer")
+	log := logr.FromContextOrDiscard(ctx).WithName("token")
+	log.Info("Starting token writer")
 
 	// clean up all secrets managed by git-auth-proxy
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{managedByLabelKey: managedByLabelValue}}
@@ -86,8 +85,8 @@ func (t *TokenWriter) Start(ctx context.Context) error {
 	)
 	_, err = informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			UpdateFunc: t.secretUpdated,
-			DeleteFunc: t.secretDeleted,
+			UpdateFunc: t.secretUpdated(ctx),
+			DeleteFunc: t.secretDeleted(ctx),
 		},
 	)
 	if err != nil {
@@ -95,46 +94,54 @@ func (t *TokenWriter) Start(ctx context.Context) error {
 	}
 	informer.Run(ctx.Done())
 
-	t.logger.Info("Token writer stopped")
+	log.Info("Token writer stopped")
 	return nil
 }
 
-func (t *TokenWriter) secretUpdated(oldObj, newObj interface{}) {
-	oldSecret, ok := oldObj.(*v1.Secret)
-	if !ok {
-		t.logger.Error(errors.New("could not convert to secret"), "could not get old secret")
-		return
-	}
-	err := t.updateSecret(context.Background(), oldSecret, oldSecret.Namespace)
-	if err != nil {
-		t.logger.Error(err, "secret update error")
+func (t *TokenWriter) secretUpdated(ctx context.Context) func(oldObj, newObj interface{}) {
+	log := logr.FromContextOrDiscard(ctx)
+	return func(oldObj, newObj interface{}) {
+		oldSecret, ok := oldObj.(*v1.Secret)
+		if !ok {
+			log.Error(errors.New("could not convert to secret"), "could not get old secret")
+			return
+		}
+		err := t.updateSecret(context.Background(), oldSecret, oldSecret.Namespace)
+		if err != nil {
+			log.Error(err, "secret update error")
+			return
+		}
 	}
 }
 
-func (t *TokenWriter) secretDeleted(obj interface{}) {
-	secret, ok := obj.(*v1.Secret)
-	if !ok {
-		t.logger.Error(errors.New("could not convert to secret"), "could not get deleted secret")
-		return
-	}
-	id, ok := secret.ObjectMeta.Annotations[idLabelKey]
-	if !ok {
-		t.logger.Error(fmt.Errorf("id label not found"), "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
-		return
-	}
-	e, err := t.authz.GetEndpointById(id)
-	if err != nil {
-		t.logger.Error(err, "deleted secret does not match an endpoint", "name", secret.Name, "namespace", secret.Namespace)
-		return
-	}
-	err = t.createSecret(context.Background(), e.SecretName, secret.Namespace, e.Token, e.ID())
-	if err != nil {
-		t.logger.Error(err, "Unable to created secret after deletion")
-		return
+func (t *TokenWriter) secretDeleted(ctx context.Context) func(obj interface{}) {
+	log := logr.FromContextOrDiscard(ctx)
+	return func(obj interface{}) {
+		secret, ok := obj.(*v1.Secret)
+		if !ok {
+			log.Error(errors.New("could not convert to secret"), "could not get deleted secret")
+			return
+		}
+		id, ok := secret.ObjectMeta.Annotations[idLabelKey]
+		if !ok {
+			log.Error(fmt.Errorf("id label not found"), "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
+			return
+		}
+		e, err := t.authz.GetEndpointById(id)
+		if err != nil {
+			log.Error(err, "deleted secret does not match an endpoint", "name", secret.Name, "namespace", secret.Namespace)
+			return
+		}
+		err = t.createSecret(context.Background(), e.SecretName, secret.Namespace, e.Token, e.ID())
+		if err != nil {
+			log.Error(err, "Unable to created secret after deletion")
+			return
+		}
 	}
 }
 
 func (t *TokenWriter) createSecret(ctx context.Context, name string, namespace string, token string, id string) error {
+	log := logr.FromContextOrDiscard(ctx).WithName("token")
 	secretObject := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -154,29 +161,31 @@ func (t *TokenWriter) createSecret(ctx context.Context, name string, namespace s
 	}
 	_, err := t.client.CoreV1().Secrets(namespace).Create(ctx, secretObject, metav1.CreateOptions{})
 	if err != nil {
-		t.logger.Error(err, "could not create secret", "name", name, "namespace", namespace)
+		log.Error(err, "could not create secret", "name", name, "namespace", namespace)
 		return err
 	}
-	t.logger.Info("created secret", "name", name, "namespace", namespace)
+	log.Info("created secret", "name", name, "namespace", namespace)
 	return nil
 }
 
 func (t *TokenWriter) updateSecret(ctx context.Context, secret *v1.Secret, namespace string) error {
+	log := logr.FromContextOrDiscard(ctx).WithName("token")
 	_, err := t.client.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
-		t.logger.Error(err, "could not update secret", "name", secret.Name, "namespace", namespace)
+		log.Error(err, "could not update secret", "name", secret.Name, "namespace", namespace)
 		return err
 	}
-	t.logger.Info("updated secret", "name", secret.Name, "namespace", namespace)
+	log.Info("updated secret", "name", secret.Name, "namespace", namespace)
 	return nil
 }
 
 func (t *TokenWriter) deleteSecret(ctx context.Context, name string, namespace string) error {
+	log := logr.FromContextOrDiscard(ctx).WithName("token")
 	err := t.client.CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
-		t.logger.Error(err, "could not delete old secret", "name", name, "namespace", namespace)
+		log.Error(err, "could not delete old secret", "name", name, "namespace", namespace)
 		return err
 	}
-	t.logger.Info("deleted secret", "name", name, "namespace", namespace)
+	log.Info("deleted secret", "name", name, "namespace", namespace)
 	return nil
 }
