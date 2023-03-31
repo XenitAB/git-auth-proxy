@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -25,29 +26,32 @@ import (
 	"github.com/xenitab/git-auth-proxy/pkg/token"
 )
 
+type Arguments struct {
+	Addr           string `arg:"--addr" default:":8080"`
+	MetricsAddr    string `arg:"--metrics-addr" default:":9090"`
+	CfgPath        string `arg:"--config,required"`
+	KubeconfigPath string `arg:"--kubeconfig"`
+}
+
 func main() {
-	var args struct {
-		Addr           string `arg:"--addr" default:":8080"`
-		MetricsAddr    string `arg:"--metrics-addr" default:":9090"`
-		CfgPath        string `arg:"--config,required"`
-		KubeconfigPath string `arg:"--kubeconfig"`
-	}
-	arg.MustParse(&args)
+	args := &Arguments{}
+	arg.MustParse(args)
 
 	zapLog, err := zap.NewProduction()
 	if err != nil {
-		fmt.Printf("who watches the watchmen (%v)?", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("who watches the watchmen (%v)?", err))
 	}
-	logger := zapr.NewLogger(zapLog)
+	log := zapr.NewLogger(zapLog)
+	ctx := logr.NewContext(context.Background(), log)
 
-	if err := run(logger, args.Addr, args.MetricsAddr, args.CfgPath, args.KubeconfigPath); err != nil {
-		logger.WithName("main").Error(err, "run error")
+	if err := run(ctx, args.Addr, args.MetricsAddr, args.CfgPath, args.KubeconfigPath); err != nil {
+		log.Error(err, "")
 		os.Exit(1)
 	}
+	log.Info("gracefully shutdown")
 }
 
-func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) error {
+func run(ctx context.Context, addr, metricsAddr, cfgPath, kubeconfigPath string) error {
 	authz, err := getAutorization(cfgPath)
 	if err != nil {
 		return err
@@ -57,8 +61,7 @@ func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) 
 		return err
 	}
 
-	ctx := logr.NewContext(context.Background(), logger)
-	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -71,12 +74,12 @@ func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) 
 	})
 	g.Go(func() error {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		return metricsSrv.Shutdown(shutdownCtx)
 	})
 
-	tokenWriter := token.NewTokenWriter(logger, client, authz)
+	tokenWriter := token.NewTokenWriter(client, authz)
 	g.Go(func() error {
 		if err := tokenWriter.Start(ctx); err != nil {
 			return err
@@ -84,7 +87,7 @@ func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) 
 		return nil
 	})
 
-	srv := server.NewServer(logger, addr, authz)
+	srv := server.NewServer(ctx, addr, authz)
 	g.Go(func() error {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
@@ -93,11 +96,12 @@ func run(logger logr.Logger, addr, metricsAddr, cfgPath, kubeconfigPath string) 
 	})
 	g.Go(func() error {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	})
 
+	logr.FromContextOrDiscard(ctx).Info("running git-auth-proxy")
 	if err := g.Wait(); err != nil {
 		return err
 	}

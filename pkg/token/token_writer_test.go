@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -37,9 +36,8 @@ func TestBasic(t *testing.T) {
 	}
 	authz, err := auth.NewAuthorizer(cfg)
 	require.NoError(t, err)
-	logger := logr.Discard()
 	client := fake.NewSimpleClientset()
-	tokenWriter := NewTokenWriter(logger, client, authz)
+	tokenWriter := NewTokenWriter(client, authz)
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	go func() {
