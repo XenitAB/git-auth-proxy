@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.8.2
-	github.com/xenitab/pkg/gin v0.0.7
+	github.com/xenitab/pkg/gin v0.0.9
 	github.com/xenitab/pkg/kubernetes v0.0.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.1.0
@@ -65,6 +65,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/slok/go-http-metrics v0.10.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
