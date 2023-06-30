@@ -87,9 +87,10 @@ func run(ctx context.Context, addr, metricsAddr, cfgPath, kubeconfigPath string)
 		return nil
 	})
 
-	srv := server.NewServer(ctx, addr, authz)
+	gp := server.NewGitProxy(authz)
+	proxySrv := gp.Server(ctx, addr)
 	g.Go(func() error {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := proxySrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
@@ -98,7 +99,7 @@ func run(ctx context.Context, addr, metricsAddr, cfgPath, kubeconfigPath string)
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		return srv.Shutdown(shutdownCtx)
+		return proxySrv.Shutdown(shutdownCtx)
 	})
 
 	logr.FromContextOrDiscard(ctx).Info("running git-auth-proxy")
