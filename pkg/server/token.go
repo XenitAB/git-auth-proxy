@@ -16,6 +16,7 @@ const (
 func getTokenFromRequest(req *http.Request) (string, error) {
 	headerValue := req.Header.Get(headerKey)
 	if headerValue == "" {
+		//nolint:staticcheck // ignore this
 		return "", fmt.Errorf("Header %s not found in request", headerKey)
 	}
 	encodedToken, isBearer, err := extractEncodedToken(headerValue)
@@ -49,5 +50,5 @@ func extractEncodedToken(value string) (string, bool, error) {
 	if strings.HasPrefix(value, bearerKey) {
 		return strings.TrimPrefix(value, bearerKey), true, nil
 	}
-	return "", false, fmt.Errorf("Missing either %s or %s", basicKey, bearerKey)
+	return "", false, fmt.Errorf("missing either %s or %s", basicKey, bearerKey)
 }

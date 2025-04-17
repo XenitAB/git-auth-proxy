@@ -22,6 +22,7 @@ func fsWithContent(content string) (afero.Fs, string, error) {
 	return fs, path, nil
 }
 
+//nolint:staticcheck // ignore this
 const invalidJson = `
 {
   "host": "dev.azure.com",

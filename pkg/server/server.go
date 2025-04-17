@@ -50,16 +50,16 @@ func (g *GitProxy) proxyHandler(c *gin.Context) {
 	err = g.authz.IsPermitted(c.Request.URL.EscapedPath(), token)
 	if err != nil {
 		//nolint: errcheck //ignore
-		c.Error(fmt.Errorf("Received unauthorized request: %w", err))
-		c.String(http.StatusForbidden, "User not permitted")
+		c.Error(fmt.Errorf("received unauthorized request: %w", err))
+		c.String(http.StatusForbidden, "user not permitted")
 		return
 	}
 	// Authenticate the request with the proper token
 	req, url, err := g.authz.UpdateRequest(c.Request.Context(), c.Request, token)
 	if err != nil {
 		//nolint: errcheck //ignore
-		c.Error(fmt.Errorf("Could not authenticate request: %w", err))
-		c.String(http.StatusInternalServerError, "Internal server error")
+		c.Error(fmt.Errorf("could not authenticate request: %w", err))
+		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
 
