@@ -2,8 +2,6 @@ module github.com/xenitab/git-auth-proxy
 
 go 1.23.0
 
-toolchain go1.23.5
-
 require (
 	github.com/alexflint/go-arg v1.5.1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.15.0
