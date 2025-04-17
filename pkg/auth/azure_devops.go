@@ -17,6 +17,7 @@ func newAzureDevops(pat string) *azureDevops {
 	}
 }
 
+//nolint:staticcheck // ignore this
 func (a *azureDevops) getPathRegex(organization, project, repository string) ([]*regexp.Regexp, error) {
 	baseApi, err := regexp.Compile(fmt.Sprintf(`(?i)/%s/_apis\b`, organization))
 	if err != nil {

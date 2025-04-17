@@ -24,10 +24,12 @@ docker-build:
 	docker build -t ${IMG} .
 
 kind-load:
+	kind create cluster
 	kind load docker-image $(IMG)
 
 e2e: docker-build kind-load
 	./e2e/e2e.sh $(TAG)
+	kind delete cluster
 .PHONY: e2e
 
 

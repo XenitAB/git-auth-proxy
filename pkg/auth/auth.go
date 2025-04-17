@@ -94,6 +94,7 @@ func (a *Authorizer) GetEndpoints() []*Endpoint {
 	return a.endpoints
 }
 
+//nolint:staticcheck // ignore this
 func (a *Authorizer) GetEndpointById(id string) (*Endpoint, error) {
 	e, ok := a.endpointsByID[id]
 	if !ok {

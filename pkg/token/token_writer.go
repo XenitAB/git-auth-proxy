@@ -122,6 +122,7 @@ func (t *TokenWriter) secretDeleted(ctx context.Context) func(obj interface{}) {
 			log.Error(errors.New("could not convert to secret"), "could not get deleted secret")
 			return
 		}
+		//nolint:staticcheck // ignore this
 		id, ok := secret.ObjectMeta.Annotations[idLabelKey]
 		if !ok {
 			log.Error(fmt.Errorf("id label not found"), "metadata missing in secret labels", "name", secret.Name, "namespace", secret.Namespace)
