@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Helm
-        uses: azure/setup-helm@4.3.0
+        uses: azure/setup-helm@v4.3.0
         with:
           version: "3.10.1"
       - name: Restore Go cache
